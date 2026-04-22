@@ -1,0 +1,50 @@
+# Dependencies used only if future tooling adds packages
+node_modules/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+.envrc
+.npmrc
+
+# Local credential mapping/checklists
+credentials/**
+!credentials/
+!credentials/checklist.example.md
+
+# Local workflow IDs/deploy targets
+workflows/**/local.json
+
+# Raw cloud exports may contain sensitive credential names, IDs, URLs, headers,
+# payload samples, or other private workflow data.
+imports/raw/**
+
+# Local exports, archives, and data dumps
+exports/
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.pdf
+*.zip
+*.tar
+*.tar.gz
+
+# Local keys, certs, and databases
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.db
+*.sqlite
+*.sqlite3
+
+# Local temp files and logs
+tmp/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

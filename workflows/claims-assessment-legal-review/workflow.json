@@ -1,0 +1,1479 @@
+{
+  "name": "[Main workflow] Claims Assessment & Legal Review",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "outlook-email-notifications",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -64,
+        -112
+      ],
+      "id": "6c738c1f-b656-4f84-9175-cfc49a271da8",
+      "name": "Graph: Webhook Receiver",
+      "webhookId": "[REDACTED]"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-val-1",
+              "leftValue": "={{ $json.query.validationToken }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            },
+            {
+              "id": "6ca7237c-0763-491b-9474-fe6dacd79b57",
+              "leftValue": "={{ $json.query.validationToken }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": "",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        128,
+        -112
+      ],
+      "id": "d02b4865-892a-42ff-bce0-e630dcf3442e",
+      "name": "Check: Is Validation Request?"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query.validationToken }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        336,
+        96
+      ],
+      "id": "e667fb9c-d41e-4ac9-a753-11170bf9dd36",
+      "name": "Respond: Echo Validation Token"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"received\": true }",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        336,
+        -112
+      ],
+      "id": "35fad0de-24c2-414a-b41e-309f20475a81",
+      "name": "Respond: Acknowledge Notification"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "=body.value",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        560,
+        -112
+      ],
+      "id": "606df783-1a42-42b5-8873-1ae6b39aaa77",
+      "name": "Split: Notification Items"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "from",
+              "value": "={{ { value: [{ address: $json.from.emailAddress.address }] } }}",
+              "type": "object"
+            },
+            {
+              "id": "id-3",
+              "name": "to",
+              "value": "={{ { value: [{ address: $json.toRecipients[0].emailAddress.address }] } }}",
+              "type": "object"
+            },
+            {
+              "id": "id-4",
+              "name": "text",
+              "value": "={{ $json.body.content }}",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "date",
+              "value": "={{ DateTime.fromISO($json.receivedDateTime).setZone('Australia/Sydney').toFormat('yyyy-MM-dd HH:mm:ss ZZZZ') }}",
+              "type": "string"
+            },
+            {
+              "id": "id-6",
+              "name": "parentFolderId",
+              "value": "={{ $json.parentFolderId }}",
+              "type": "string"
+            },
+            {
+              "id": "id-7",
+              "name": "senderAddress",
+              "value": "={{ $json.from.emailAddress.address }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        576,
+        320
+      ],
+      "id": "b55ba319-a03c-46ce-8ca7-ebfea8ab01f9",
+      "name": "Format: Normalize Email Fields"
+    },
+    {
+      "parameters": {
+        "url": "[REDACTED]",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "$select",
+              "value": "=subject,from,toRecipients,body,receivedDateTime,parentFolderId,sender"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "outlook.body-content-type=\"text\""
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        560,
+        96
+      ],
+      "id": "ed34f2a1-779f-4042-b015-7b1d26902860",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"is_offer_stage\": {\n      \"type\": \"boolean\",\n      \"description\": \"Whether this email represents a formal settlement offer or counter-offer with explicit proposal language and offer mechanics\"\n    },\n    \"is_fr_assessment\": {\n      \"type\": \"boolean\",\n      \"description\": \"Whether this email represents an insurer's fair and reasonable assessment or assessment notification (evaluation/analysis of claim, may include amounts)\"\n    },\n    \"is_settlement_acceptance\": {\n      \"type\": \"boolean\",\n      \"description\": \"Whether this email confirms acceptance/settlement of a previous offer\"\n    },\n    \"assessed_amount\": {\n      \"type\": \"number\",\n      \"description\": \"The dollar amount mentioned in F&R assessment (if is_fr_assessment = TRUE). Otherwise 0\"\n    },\n    \"references\": {\n      \"type\": \"array\",\n      \"description\": \"Array of all reference-like numbers found in subject and body (vehicle rego, claim numbers, reference numbers, etc.)\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    },\n    \"total_offer_amount\": {\n      \"type\": \"number\",\n      \"description\": \"Total settlement/offer/counter-offer/acceptance amount (if is_offer_stage OR is_settlement_acceptance = TRUE). Otherwise 0\"\n    },\n    \"date_received\": {\n      \"type\": \"string\",\n      \"description\": \"Date the email was received in YYYY-MM-DD HH:mm:ss format\"\n    },\n    \"next_task_due\": {\n      \"type\": \"string\",\n      \"description\": \"Next task due date (date_received + 7 days in dd-MMM-yy format)\"\n    },\n    \"is_calderbank\": {\n      \"type\": \"boolean\",\n      \"description\": \"Whether this is a Calderbank offer or Without Prejudice communication\"\n    },\n    \"file_notes\": {\n      \"type\": \"string\",\n      \"description\": \"A chronological entry capturing the current status and next required action, formatted as [Date] - [Tag] - [Details]\"\n    },\n    \"summary\": {\n      \"type\": \"string\",\n      \"description\": \"Brief summary of the email content\"\n    }\n  },\n  \"required\": [\"is_offer_stage\", \"is_fr_assessment\", \"is_settlement_acceptance\", \"references\", \"summary\"]\n}"
+      },
+      "id": "c20a50ee-6462-4788-9154-c4eb163b050f",
+      "name": "JSON Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        976,
+        144
+      ],
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Subject: {{ $json.subject }}\nFirm Domain: example.com\nSender Email: {{ $json.from.value[0].address }}\nRecipient Email: {{ $json.to.value[0].address }}\nBody: {{ $json.text }}\nReceived Date: {{ $json.date }}",
+        "hasOutputParser": true,
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=You are an expert Australian Legal & Insurance Intake Specialist. Your task is to analyze incoming emails from insurance companies and extract key metadata into a structured JSON format.\n\nThe input will be provided in this format:\nSubject: [email subject line]\nSender Email: [email address by sender]\nRecipient Email: [email address of recipient]\nBody: [email body content]\nFirm Domain: [your firm's domain for sent/received classification]\nReceived Date: [email received date]\n\n================================================================================\nEXTRACTION RULES\n================================================================================\n\nREFERENCES: Extract ALL reference-like numbers from BOTH the subject line and body into an array. This includes:\n- Vehicle registration numbers (usually 6-7 characters like \"YBS740\" or \"ABC-123\")\n- Claim numbers (format varies, e.g., MVCL25000106, A2200, NRA123321456654, etc.)\n- Any reference numbers labeled as \"Claim Number,\" \"Reference,\" \"Our Reference,\" \"Your Reference,\" \"Claim No,\" \"Ref,\" etc.\n- Extract all alphanumeric sequences that appear to be identifiers\n\nSTAGE CLASSIFICATION (Mutually Exclusive - Select ONE primary stage):\n\n1. F&R ASSESSMENT STAGE (is_fr_assessment = TRUE):\n   - Email where insurer is ANALYZING/EVALUATING the claim\n   - Includes substantive F&R assessment AND procedural assessment notifications\n   - Language indicators:\n     * \"we have assessed your client's claim\"\n     * \"our assessment\"\n     * \"we consider the following to be fair and reasonable\"\n     * \"fair and reasonable assessment\"\n     * \"we assess\" or \"we have assessed\"\n     * \"sent for assessment\"\n     * \"assessment is ongoing\"\n     * \"hold your file in abeyance\"\n     * \"assessor will require X days to complete\"\n   - Any mention as to liability or negligence ALONE will not be tagged as F&R.\n   - May or may not contain dollar amounts\n   - IF amounts are present, MUST ANALYZE whether this is an offer (see CRITICAL ANALYSIS below)\n   - Does NOT include offer mechanics (validity period, payment terms, acceptance instructions) UNLESS it's a formal settlement proposal\n   - Set is_fr_assessment = TRUE, is_offer_stage = FALSE\n   - assessed_amount = dollar amount mentioned (if substantive assessment), else = 0\n   - total_offer_amount = 0\n\n2. OFFER STAGE (is_offer_stage = TRUE):\n   - Email contains EXPLICIT SETTLEMENT PROPOSAL with offer mechanics\n   - CRITICAL: Only classify as offer if BOTH conditions are met:\n     a) Explicit offer language present:\n        * \"settlement offer\" or \"formal offer\" or \"we propose to settle\"\n        * \"counter-offer\" or \"counter-proposal\" or \"we counter-propose\"\n        * Clear intent to propose settlement at a specific amount\n     b) AND offer mechanics present (at least one of):\n        * Explicit validity period (e.g., \"valid until [date]\", \"open for acceptance until [date]\")\n        * Payment terms and method (bank transfer, cheque, EFT, etc.)\n        * Explicit acceptance instructions (e.g., \"please confirm acceptance\", \"provide banking details\")\n        * Reference to \"Without Prejudice\" or \"Calderbank\"\n   - If F&R assessment contains amounts but NO offer mechanics → remains F&R Assessment, NOT offer\n   - If email has offer language AND amounts but NO mechanics → ANALYZE whether intent is settlement proposal; if yes = offer, if no = F&R Assessment\n   - Set is_offer_stage = TRUE, is_fr_assessment = FALSE\n   - Extract total_offer_amount\n   - assessed_amount = 0\n\n3. SETTLEMENT ACCEPTANCE STAGE (is_settlement_acceptance = TRUE):\n   - Email confirms acceptance of previous offer or counter-offer\n   - Language: \"accept,\" \"accepted,\" \"we agree to settle,\" \"pleased to accept\"\n   - Confirms final settlement amount\n   - Provides settlement mechanics (banking details request, statutory declaration, etc.)\n   - Set is_settlement_acceptance = TRUE, all other stages = FALSE\n   - Extract total_offer_amount as final settlement amount\n\n4. LIABILITY\n   - Email where insurer is specifically admitting/accepting fault and negligence on their insured or client\n   - Language indicators:\n     * \"liability is admitted\"\n     * \"liability is not in dispute\"\n     * \"liability is accepted\"\n     * \"we consider our client to be at fault\"\n     * \"we consider our insured to be at fault\"\n     * \"we deem our client to be liable\"\n     * \"we deem our insured to be liable\"\n\nCONFLICT RESOLUTION:\n- Stages are listed in order of priority\n- If an email could be MULTIPLE stages, apply this hierarchy:\n  1. Settlement Acceptance (final stage - takes precedence)\n  2. Offer Stage (explicit settlement proposal with mechanics)\n  3. F&R Assessment (evaluation/analysis of claim)\n- Only ONE stage can be TRUE; all others must be FALSE\n\nCRITICAL ANALYSIS FOR OFFERS:\n- When F&R assessment contains amounts, ANALYZE the context:\n  * Is the sender explicitly proposing to settle at this amount? → Offer\n  * Is the sender just evaluating what they think is fair value? → F&R Assessment\n  * Does the email include settlement acceptance mechanics? → Offer\n  * Does the email just provide evaluation/reasoning? → F&R Assessment\n- Err on the side of F&R Assessment unless there is CLEAR offer language + mechanics\n\nDATE PROCESSING:\n- Extract the email received date\n- Convert {{$json.date}} as date_received to Australia/Sydney time formatted STRICTLY as: YYYY-MM-DD HH:mm:ss\n  Example: \"2026-04-13 09:59:57\"\n- Calculate next_task_due as date_received + 7 days\n- Format next_task_due as dd-MMM-yy (e.g., \"09-Mar-26\")\n\nFILE NOTES GENERATION:\nRules:\n1. Determine Direction:\n   - Extract the domain from the Sender Email (the part after @)\n   - If the sender's domain matches the 'Firm Domain', classify as \"SENT\"\n   - If the sender's domain does NOT match the 'Firm Domain', classify as \"RECEIVED\"\n\n2. Content Logic (use appropriate tag based on email stage):\n   \n   If is_settlement_acceptance = TRUE:\n   - \"Settled - $[total_offer_amount]\"\n   \n   If is_offer_stage = TRUE:\n   - If SENT and is counter: \"Sent Counter Offer - $[total_offer_amount]\"\n   - If SENT and is offer: \"Sent TP Offer - $[total_offer_amount]\"\n   - If RECEIVED and is counter: \"Received Counter Offer - $[total_offer_amount]\"\n   - If RECEIVED and is offer: \"Received TP Offer - $[total_offer_amount]\"\n   \n   If is_fr_assessment = TRUE:\n   - \"F&R Assessment\" (NO amount shown, NO sent/received prefix)\n   \n3. Format: [Date] - [Tag] - [Details]\n   Examples: \n   - \"02-Apr-26 - F&R Assessment\"\n   - \"08-Apr-26 - Received TP Offer - $14,600.00\"\n   - \"15-Apr-26 - Sent Counter Offer - $15,800.00\"\n   - \"19-Apr-26 - Settled - $15,800.00\"\n\nOUTPUT STRICTLY IN THIS JSON FORMAT:\n{\n  \"is_offer_stage\": boolean,\n  \"is_fr_assessment\": boolean,\n  \"is_settlement_acceptance\": boolean,\n  \"assessed_amount\": number,\n  \"total_offer_amount\": number,\n  \"references\": [\"string\"],\n  \"date_received\": \"string (YYYY-MM-DD HH:mm:ss)\",\n  \"next_task_due\": \"string (dd-MMM-yy)\",\n  \"file_notes\": \"string\",\n  \"summary\": \"string\"\n}\n\nCRITICAL NOTES:\n- assessed_amount: Only populated if is_fr_assessment = TRUE. Otherwise = 0\n- total_offer_amount: Only populated if is_offer_stage OR is_settlement_acceptance = TRUE. Otherwise = 0\n- Only ONE boolean field (is_*) should be TRUE at a time\n- If email contains mixed content, prioritize per the CONFLICT RESOLUTION hierarchy\n- ALWAYS ANALYZE: If F&R assessment has amounts, determine whether it's truly an offer by checking for explicit settlement proposal language + mechanics"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        784,
+        -112
+      ],
+      "id": "5a98e91d-4536-44c3-acba-d3a1826ce9c6",
+      "name": "AI: Extract Claim Metadata & Analysis",
+      "retryOnFail": true,
+      "notesInFlow": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ $json.output.is_settlement_acceptance }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "14357a63-4ad6-4c72-be24-b6ec7ff6c18d",
+      "name": "Check If Settlement Acceptance",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ $json.output.is_offer_stage }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "8f7d2e36-09a0-4a8a-9fa5-3be2ee9c9bec",
+      "name": "Check If Offer Stage",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ $json.output.is_fr_assessment}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "a94f25e5-d4f3-4450-b76d-992b25cd508f",
+      "name": "Check If F&R Assessment",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $input.first().json.output;\n\nconst references = $input.first().json.output.references;\nconst targetSheets = [\n  'Liability',\n  'Nat',\n  'Cherie',\n  'Angelene',\n  'Tina',\n  'NRMA/Justin',\n];\n\nconst results = [];\n\nfor (const current_reference of references) {\n  for (const targetSheet of targetSheets) {\n    const { references, ...cleanSource } = source;\n\n    results.push({\n      json: {\n        ...cleanSource,\n        current_reference,\n        targetSheet,\n      },\n    });\n  }\n}\n\nreturn results;"
+      },
+      "id": "ebe0ffa8-e44e-4d84-8b98-0a519c8dc036",
+      "name": "Code: Expand Reference Across Sheets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "688d1a84-a37e-434f-bfe7-78333767f456",
+      "name": "Loop: Search Each Sheet",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1472,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-match-found-1",
+              "leftValue": "={{ $json.row_number }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "37a048fd-1f49-4b70-9591-2e12cbff0e04",
+      "name": "IF: Match Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1952,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c4d8be27-9bd1-468c-a27e-4bd2df59e8d6",
+              "name": "row_number",
+              "value": "={{ $json.row_number }}",
+              "type": "number"
+            },
+            {
+              "id": "c3cf7f99-8ac7-42d0-9758-95a1eada8b16",
+              "name": "REVIEW STATUS",
+              "value": "=Awaiting Review",
+              "type": "string"
+            },
+            {
+              "id": "282db9a6-c64e-456e-bcea-b2cf8e86e715",
+              "name": "RESUME URL",
+              "value": "={{ $execution.resumeUrl }}",
+              "type": "string"
+            },
+            {
+              "id": "beea156e-0521-4810-9ee0-6beeffa9a63c",
+              "name": "PENDING AI NOTES",
+              "value": "={{ $('AI: Extract Claim Metadata & Analysis').item.json.output.file_notes }}",
+              "type": "string"
+            },
+            {
+              "id": "58faf79c-fc03-43af-aa74-b33a9e6cc73d",
+              "name": "=AI SUMMARY",
+              "value": "={{ $('AI: Extract Claim Metadata & Analysis').item.json.output.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "158ff4cc-43ae-4610-9c14-b1fc6d11c1c1",
+              "name": "EMAIL RECEIVED DATE",
+              "value": "={{ $('AI: Extract Claim Metadata & Analysis').item.json.output.date_received }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "614f0282-3362-4a4f-bf13-dc7008a4c95e",
+      "name": "Set: Matched Record Details",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2176,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-merge-3",
+              "name": "REGO",
+              "value": "={{ $('Sheets: Cross-Reference Existing Records').item.json.REGO }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-merge-4",
+              "name": "NEXT TASK DUE",
+              "value": "={{ $('Code: Expand Reference Across Sheets').item.json.next_task_due }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-merge-5",
+              "name": "FILE NOTES",
+              "value": "={{ $('Portal: Awaiting Legal Verification1').item.json.body.modified_notes ?? $('AI: Extract Claim Metadata & Analysis').item.json.output.file_notes }}; {{ $('IF: Match Found').item.json['FILE NOTES'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b3e6a582-fefc-4dc6-ad8d-b1c6ce86ea0b",
+      "name": "Format: Merge AI Notes with History",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2176,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "[REDACTED]",
+          "mode": "list",
+          "cachedResultName": "Recoveries Account 2025",
+          "cachedResultUrl": "[REDACTED]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Loop: Search Each Sheet').item.json.targetSheet }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "REGO": "={{$json.REGO}}",
+            "NEXT TASK DUE": "={{ $json['NEXT TASK DUE'] }}",
+            "FILE NOTES": "={{ $json['FILE NOTES'] }}"
+          },
+          "matchingColumns": [
+            "REGO"
+          ],
+          "schema": [
+            {
+              "id": "REPAIRER",
+              "displayName": "REPAIRER",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "REGO",
+              "displayName": "REGO",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "MAKE | MODEL",
+              "displayName": "MAKE | MODEL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "CLIENT NAME",
+              "displayName": "CLIENT NAME",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "INSURER",
+              "displayName": "INSURER",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "CLAIM NUMBER",
+              "displayName": "CLAIM NUMBER",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "RENTAL | REPAIR",
+              "displayName": "RENTAL | REPAIR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "PRIORITY",
+              "displayName": "PRIORITY",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "STATUS",
+              "displayName": "STATUS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "NEXT TASK DUE",
+              "displayName": "NEXT TASK DUE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "LOD | NTS",
+              "displayName": "LOD | NTS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "DATE CLAIM RECIEVED",
+              "displayName": "DATE CLAIM RECIEVED",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "COST PAID",
+              "displayName": "COST PAID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "FILE NOTES",
+              "displayName": "FILE NOTES",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "VALUE",
+              "displayName": "VALUE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ACCIDENT DATE",
+              "displayName": "ACCIDENT DATE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ACCIDENT LOCATION",
+              "displayName": "ACCIDENT LOCATION",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TP NAME",
+              "displayName": "TP NAME",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TP REGO",
+              "displayName": "TP REGO",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "REVIEW STATUS",
+              "displayName": "REVIEW STATUS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "RESUME URL",
+              "displayName": "RESUME URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "PENDING AI NOTES",
+              "displayName": "PENDING AI NOTES",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "AI SUMMARY",
+              "displayName": "AI SUMMARY",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "EMAIL RECEIVED DATE",
+              "displayName": "EMAIL RECEIVED DATE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "3e6a6b30-03b5-4c7e-9a1f-85d55689331d",
+      "name": "Final Google Sheets Update",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1904,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "httpMethod": "POST",
+        "options": {}
+      },
+      "id": "aac3fe87-3ff1-4f9d-b8c6-97d275681570",
+      "name": "Portal: Awaiting Legal Verification1",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2176,
+        352
+      ],
+      "webhookId": "[REDACTED]"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "[REDACTED]",
+          "mode": "list",
+          "cachedResultName": "Recoveries Account 2025",
+          "cachedResultUrl": "[REDACTED]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $json.targetSheet }}",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "REGO",
+              "lookupValue": "={{ $json.current_reference }}"
+            },
+            {
+              "lookupColumn": "CLAIM NUMBER",
+              "lookupValue": "={{ $json.current_reference }}"
+            }
+          ]
+        },
+        "combineFilters": "OR",
+        "options": {}
+      },
+      "id": "55d17302-4da6-4888-8aa4-2fd5166a4108",
+      "name": "Sheets: Cross-Reference Existing Records",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1712,
+        128
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "[REDACTED]",
+          "mode": "list",
+          "cachedResultName": "Recoveries Account 2025",
+          "cachedResultUrl": "[REDACTED]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Loop: Search Each Sheet').item.json.targetSheet }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "REVIEW STATUS": "Awaiting Review",
+            "RESUME URL": "={{ $execution.resumeUrl }}",
+            "PENDING AI NOTES": "={{ $json['PENDING AI NOTES'] }}",
+            "AI SUMMARY": "={{ $json['AI SUMMARY'] }}",
+            "EMAIL RECEIVED DATE": "={{ $json['EMAIL RECEIVED DATE'] }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "REPAIRER",
+              "displayName": "REPAIRER",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "REGO",
+              "displayName": "REGO",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "MAKE | MODEL",
+              "displayName": "MAKE | MODEL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "CLIENT NAME",
+              "displayName": "CLIENT NAME",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "INSURER",
+              "displayName": "INSURER",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "CLAIM NUMBER",
+              "displayName": "CLAIM NUMBER",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "RENTAL | REPAIR",
+              "displayName": "RENTAL | REPAIR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "PRIORITY",
+              "displayName": "PRIORITY",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "STATUS",
+              "displayName": "STATUS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "NEXT TASK DUE",
+              "displayName": "NEXT TASK DUE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "LOD | NTS",
+              "displayName": "LOD | NTS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "DATE CLAIM RECIEVED",
+              "displayName": "DATE CLAIM RECIEVED",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "COST PAID",
+              "displayName": "COST PAID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "FILE NOTES",
+              "displayName": "FILE NOTES",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "VALUE",
+              "displayName": "VALUE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ACCIDENT DATE",
+              "displayName": "ACCIDENT DATE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ACCIDENT LOCATION",
+              "displayName": "ACCIDENT LOCATION",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TP NAME",
+              "displayName": "TP NAME",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TP REGO",
+              "displayName": "TP REGO",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "REVIEW STATUS",
+              "displayName": "REVIEW STATUS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "RESUME URL",
+              "displayName": "RESUME URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "PENDING AI NOTES",
+              "displayName": "PENDING AI NOTES",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI SUMMARY",
+              "displayName": "AI SUMMARY",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "EMAIL RECEIVED DATE",
+              "displayName": "EMAIL RECEIVED DATE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2176,
+        128
+      ],
+      "id": "91649b23-9bf8-49c9-a887-d410722e0418",
+      "name": "Update row in sheet"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        832,
+        336
+      ],
+      "id": "8bd73b70-3030-40fc-a6a0-36dcb5647ff9",
+      "name": "Google Gemini Chat Model (Fallback)"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        784,
+        144
+      ],
+      "id": "31e2c70b-022e-4738-a024-0bce23060a95",
+      "name": "Google Gemini Chat Model (Main)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "51b42bd6-cd1b-4984-a755-bc17706ec0b2",
+              "leftValue": "={{ $('Portal: Awaiting Legal Verification1').item.json.body.action",
+              "rightValue": "approved",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2176,
+        576
+      ],
+      "id": "ebc7e529-03cd-4638-9506-0b00aca624c5",
+      "name": "If"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Graph: Webhook Receiver": {
+      "main": [
+        [
+          {
+            "node": "Check: Is Validation Request?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Is Validation Request?": {
+      "main": [
+        [
+          {
+            "node": "Respond: Echo Validation Token",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Acknowledge Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond: Acknowledge Notification": {
+      "main": [
+        [
+          {
+            "node": "Split: Notification Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split: Notification Items": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Normalize Email Fields": {
+      "main": [
+        [
+          {
+            "node": "AI: Extract Claim Metadata & Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Format: Normalize Email Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI: Extract Claim Metadata & Analysis",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: Extract Claim Metadata & Analysis": {
+      "main": [
+        [
+          {
+            "node": "Check If Settlement Acceptance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Settlement Acceptance": {
+      "main": [
+        [
+          {
+            "node": "Code: Expand Reference Across Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check If Offer Stage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Offer Stage": {
+      "main": [
+        [
+          {
+            "node": "Code: Expand Reference Across Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check If F&R Assessment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If F&R Assessment": {
+      "main": [
+        [
+          {
+            "node": "Code: Expand Reference Across Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Expand Reference Across Sheets": {
+      "main": [
+        [
+          {
+            "node": "Loop: Search Each Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop: Search Each Sheet": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Sheets: Cross-Reference Existing Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Match Found": {
+      "main": [
+        [
+          {
+            "node": "Set: Matched Record Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop: Search Each Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Matched Record Details": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Merge AI Notes with History": {
+      "main": [
+        [
+          {
+            "node": "Final Google Sheets Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Portal: Awaiting Legal Verification1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Cross-Reference Existing Records": {
+      "main": [
+        [
+          {
+            "node": "IF: Match Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Portal: Awaiting Legal Verification1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model (Fallback)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: Extract Claim Metadata & Analysis",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model (Main)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: Extract Claim Metadata & Analysis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Format: Merge AI Notes with History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "tags": []
+}

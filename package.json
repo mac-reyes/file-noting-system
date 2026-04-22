@@ -1,0 +1,17 @@
+{
+  "name": "file-noting-system-workflows",
+  "version": "0.1.0",
+  "private": true,
+  "description": "n8n workflow development workspace with sanitized exports and private credentials.",
+  "type": "module",
+  "scripts": {
+    "get": "node scripts/get-workflow.mjs",
+    "sanitize": "node scripts/sanitize-workflow.mjs",
+    "check": "node scripts/check-workflows.mjs",
+    "deploy": "node scripts/deploy-workflow.mjs",
+    "datatables": "node scripts/datatables.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

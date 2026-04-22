@@ -1,0 +1,410 @@
+{
+  "name": "[Sub-workflow] Microsoft Graph Mail Subscription Manager",
+  "nodes": [
+    {
+      "parameters": {
+        "fieldToSplitOut": "users",
+        "options": {}
+      },
+      "id": "1e8c9554-abac-421a-b5d5-7545365ce551",
+      "name": "Split Out Users",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "daysInterval": 2,
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "id": "e0065500-240c-41e9-a0c4-0d520d507a6b",
+      "name": "Schedule: Every 2 Days1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -240,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "[REDACTED]",
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "793e47fb-c429-4552-8d7d-7dea0aa9e693",
+      "name": "Config: Users to Monitor1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "c52f789d-f4db-4e85-abdd-88f8cf806a5d",
+      "name": "Loop: Process Users1",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        240,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "S0i5S2UlPttCg0O2",
+          "mode": "list",
+          "cachedResultName": "graph_subscriptions",
+          "cachedResultUrl": "/projects/8ebeik84HP5gXWyC/datatables/S0i5S2UlPttCg0O2"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_email",
+              "keyValue": "={{ $json.user_email }}"
+            }
+          ]
+        }
+      },
+      "id": "b4b1ce47-e0c5-460d-84b6-be747e18a0ef",
+      "name": "DataTable: Check Existing1",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        112
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-sub-1",
+              "leftValue": "={{ $json.subscription_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            },
+            {
+              "id": "da97ea4f-d5df-4966-99b9-69e857f43e6f",
+              "leftValue": "={{$json.subscription_id}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "f9d86256-8355-4727-978c-16384a79d310",
+      "name": "Has ID?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        688,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "[REDACTED]",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ expirationDateTime: new Date(Date.now() + 2.5 * 24 * 60 * 60 * 1000).toISOString() }) }}",
+        "options": {}
+      },
+      "id": "c6216385-3e45-4522-9f9c-4ecc9dfd24a7",
+      "name": "Graph: Renew1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "[REDACTED]",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "changeType",
+              "value": "created"
+            },
+            {
+              "name": "notificationUrl",
+              "value": "[REDACTED]"
+            },
+            {
+              "name": "resource",
+              "value": "=users/{{ $node[\"Loop: Process Users1\"].json.user_email }}/mailFolders/{{ $node[\"Loop: Process Users1\"].json.folder }}/messages"
+            },
+            {
+              "name": "expirationDateTime",
+              "value": "={{ new Date(Date.now() + 2.5 * 24 * 60 * 60 * 1000).toISOString() }}"
+            },
+            {
+              "name": "clientState",
+              "value": "n8n-outlook-subscription"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d25902f4-8d23-433a-a499-e795f1cc5e3a",
+      "name": "Graph: Register1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "S0i5S2UlPttCg0O2",
+          "mode": "list",
+          "cachedResultName": "graph_subscriptions",
+          "cachedResultUrl": "/projects/8ebeik84HP5gXWyC/datatables/S0i5S2UlPttCg0O2"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_email",
+              "keyValue": "={{ $node[\"Loop: Process Users1\"].json.user_email }}"
+            },
+            {
+              "keyName": "folder",
+              "keyValue": "={{ $node[\"Loop: Process Users1\"].json.folder }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_email": "={{ $node[\"Loop: Process Users1\"].json.user_email }}",
+            "subscription_id": "={{ $json.id || $node[\"DataTable: Check Existing1\"].json.subscription_id }}",
+            "expiration_datetime": "={{ $json.expirationDateTime }}",
+            "folder": "={{ $node[\"Loop: Process Users1\"].json.folder }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "user_email",
+              "displayName": "user_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "subscription_id",
+              "displayName": "subscription_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "expiration_datetime",
+              "displayName": "expiration_datetime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "folder",
+              "displayName": "folder",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "855d3ae1-dd69-4487-b760-b984265d7f52",
+      "name": "DataTable: Save/Update1",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1104,
+        192
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Split Out Users": {
+      "main": [
+        [
+          {
+            "node": "Loop: Process Users1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule: Every 2 Days1": {
+      "main": [
+        [
+          {
+            "node": "Config: Users to Monitor1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config: Users to Monitor1": {
+      "main": [
+        [
+          {
+            "node": "Split Out Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop: Process Users1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "DataTable: Check Existing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DataTable: Check Existing1": {
+      "main": [
+        [
+          {
+            "node": "Has ID?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has ID?1": {
+      "main": [
+        [
+          {
+            "node": "Graph: Renew1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Graph: Register1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Graph: Renew1": {
+      "main": [
+        [
+          {
+            "node": "DataTable: Save/Update1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Graph: Register1": {
+      "main": [
+        [
+          {
+            "node": "DataTable: Save/Update1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DataTable: Save/Update1": {
+      "main": [
+        [
+          {
+            "node": "Loop: Process Users1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "tags": []
+}
