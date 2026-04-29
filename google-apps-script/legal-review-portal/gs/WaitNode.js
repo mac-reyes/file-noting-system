@@ -1,3 +1,11 @@
+function onOpen(e) {
+  onOpen_LegalPortal(e);
+
+  if (typeof onOpen_ClaimStatistics === 'function') {
+    onOpen_ClaimStatistics(e);
+  }
+}
+
 function onOpen_LegalPortal() {
   SpreadsheetApp.getUi()
     .createMenu('Legal Portal')

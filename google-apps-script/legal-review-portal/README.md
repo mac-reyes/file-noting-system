@@ -24,11 +24,14 @@ google-apps-script/legal-review-portal/
   README.md
   gs/
     WaitNode.js
+    ClaimStatistics.js
     ReviewRepository.js
     ReviewMappers.js
   html/
     SidebarUI.html
     ApprovalModal.html
+    ClaimStatsModal.html
+    ClaimStatsDiagnosticsModal.html
 ```
 
 ## Files To Create In Google Apps Script
@@ -36,10 +39,13 @@ google-apps-script/legal-review-portal/
 Create these files in the Apps Script editor with the same names:
 
 - `WaitNode.gs`
+- `ClaimStatistics.gs`
 - `ReviewRepository.gs`
 - `ReviewMappers.gs`
 - `SidebarUI.html`
 - `ApprovalModal.html`
+- `ClaimStatsModal.html`
+- `ClaimStatsDiagnosticsModal.html`
 
 In this repo, the server-side Apps Script source is stored as `.js` files under `gs/` for readability, and the UI templates are stored under `html/`.
 When you copy these into Google Apps Script, create them there as `.gs` files with the matching base names.
@@ -51,14 +57,17 @@ When you copy these into Google Apps Script, create them there as `.gs` files wi
 3. Create or open the bound Apps Script project for that sheet.
 4. Rename the Apps Script project to something clear, such as `Legal Review Portal`.
 5. Remove the default placeholder code if you do not need it.
-6. Add new script files named `WaitNode.gs`, `ReviewRepository.gs`, and `ReviewMappers.gs`.
-7. Add new HTML files named `SidebarUI.html` and `ApprovalModal.html`.
+6. Add new script files named `WaitNode.gs`, `ClaimStatistics.gs`, `ReviewRepository.gs`, and `ReviewMappers.gs`.
+7. Add new HTML files named `SidebarUI.html`, `ApprovalModal.html`, `ClaimStatsModal.html`, and `ClaimStatsDiagnosticsModal.html`.
 8. Open each matching file in this repo and copy its contents into the Apps Script editor:
    - `gs/WaitNode.js` into `WaitNode.gs`
+   - `gs/ClaimStatistics.js` into `ClaimStatistics.gs`
    - `gs/ReviewRepository.js` into `ReviewRepository.gs`
    - `gs/ReviewMappers.js` into `ReviewMappers.gs`
    - `html/SidebarUI.html`
    - `html/ApprovalModal.html`
+   - `html/ClaimStatsModal.html`
+   - `html/ClaimStatsDiagnosticsModal.html`
 9. Save the Apps Script project.
 
 ## Manual Update Existing Apps Script Files
@@ -70,10 +79,13 @@ If the bound Apps Script project already exists and you want to update it manual
 3. Open the existing Apps Script project bound to that sheet.
 4. For each file below, replace the entire file contents with the latest repo version:
    - `gs/WaitNode.js` into `WaitNode.gs`
+   - `gs/ClaimStatistics.js` into `ClaimStatistics.gs`
    - `gs/ReviewRepository.js` into `ReviewRepository.gs`
    - `gs/ReviewMappers.js` into `ReviewMappers.gs`
    - `html/SidebarUI.html` into `SidebarUI.html`
    - `html/ApprovalModal.html` into `ApprovalModal.html`
+   - `html/ClaimStatsModal.html` into `ClaimStatsModal.html`
+   - `html/ClaimStatsDiagnosticsModal.html` into `ClaimStatsDiagnosticsModal.html`
 5. Save all files in the Apps Script project.
 6. Refresh the spreadsheet.
 7. Re-open the custom menu, sidebar, and modal flows to test the updated version.
@@ -280,13 +292,32 @@ If one calendar-relevant email produces three parsed events:
 1. Save the Apps Script project.
 2. Refresh the Google Sheet in your browser.
 3. Confirm the `Legal Portal` custom menu appears.
-4. Open `Legal Portal > Open Review Monitor`.
-5. Open the `Liability` tab and confirm the sidebar can show both standard and calendar items.
-6. Open `Nat`, `Cherie`, `Angelene`, `Tina`, and `NRMA/Justin` and confirm the sidebar shows only standard items.
-7. Open `Calendar Events` and confirm the sidebar shows no review items.
-8. Open a standard review tile and confirm the modal shows summary and editable notes.
-9. Open a calendar review tile in `Liability` and confirm the modal shows case details, reason, and grouped events.
-10. Test approve and deny actions on suitable rows.
+4. Confirm the `Analytics` custom menu appears.
+5. Open `Legal Portal > Open Review Monitor`.
+6. Open the `Liability` tab and confirm the sidebar can show both standard and calendar items.
+7. Open `Nat`, `Cherie`, `Angelene`, `Tina`, and `NRMA/Justin` and confirm the sidebar shows only standard items.
+8. Open `Calendar Events` and confirm the sidebar shows no review items.
+9. Open a standard review tile and confirm the modal shows summary and editable notes.
+10. Open a calendar review tile in `Liability` and confirm the modal shows case details, reason, and grouped events.
+11. Test approve and deny actions on suitable rows.
+
+## Analytics Menu
+
+The project also creates a separate `Analytics` menu with:
+
+- `Open Claim Statistics`
+- `Diagnostics`
+
+`Analytics > Open Claim Statistics` opens a read-only modal patterned after the review modal. Use the modal controls to choose `Day`, `Week`, `Month`, or `All`, select the report date, and refresh the report without reopening the menu.
+
+These reports scan the `Liability` tab and use exact section labels in column A:
+
+- `NEW CLAIMS`
+- `LIABILITY CONFIRMED`
+
+The first report run creates and hides `_Claim Stats Log`. Existing rows are written as baseline records and are not counted as new activity. Future rows are logged by detection time in the `Australia/Sydney` timezone.
+
+Claim identity is based on normalized `CLAIM NUMBER` plus `REGO`. Rows missing either value are ignored by the statistics scanner.
 
 ## Authorization Notes
 
@@ -332,6 +363,8 @@ This implementation assumes:
 - `Liability` is the only mixed review tab
 - `Nat`, `Cherie`, `Angelene`, `Tina`, and `NRMA/Justin` are standard-only tabs
 - `Calendar Events` is the exact storage tab name
+- `_Claim Stats Log` is reserved for the hidden claim statistics event log
+- `NEW CLAIMS` and `LIABILITY CONFIRMED` are exact section labels in column A of `Liability`
 - calendar case approval is one decision per `CASE NUMBER`
 - standard rows and calendar rows already contain valid `RESUME URL` values
 - standard review tabs continue to use fixed column-number references in code
