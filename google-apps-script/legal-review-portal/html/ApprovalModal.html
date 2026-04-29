@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --bg: #edf3f8;
+      --panel-top: #fbfdff;
+      --panel-bottom: #edf2f7;
+      --card: #ffffff;
+      --ink: #17212b;
+      --muted: #66758a;
+      --line: #d6e0ea;
+      --line-strong: #c7d4e1;
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --blue-soft: #e8f0ff;
+      --green: #15803d;
+      --green-dark: #166534;
+      --green-soft: #edf8ef;
+      --red: #dc2626;
+      --red-dark: #b91c1c;
+      --amber: #b45309;
+      --amber-soft: #fff4e5;
+      --shadow: 0 16px 36px rgba(15, 23, 42, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      font-family: "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 28%),
+        linear-gradient(180deg, var(--panel-top), var(--panel-bottom));
+    }
+
+    body {
+      padding: 18px;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .hero {
+      padding: 18px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.92);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .hero-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: var(--blue-soft);
+      color: var(--blue-dark);
+    }
+
+    .badge-calendar {
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+
+    .hero-title {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.15;
+      font-weight: 800;
+    }
+
+    .hero-subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .info-card {
+      padding: 11px 12px;
+      border-radius: 14px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+    }
+
+    .info-label {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .info-value {
+      font-size: 13px;
+      line-height: 1.45;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .section {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--card);
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .section-copy {
+      margin: 0;
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+
+    .section-copy-muted {
+      color: var(--muted);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 126px;
+      padding: 12px 13px;
+      border-radius: 14px;
+      border: 1px solid var(--line-strong);
+      background: #ffffff;
+      color: var(--ink);
+      font-family: inherit;
+      font-size: 13px;
+      line-height: 1.6;
+      resize: vertical;
+      outline: none;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 12px 13px;
+      border-radius: 14px;
+      border: 1px solid var(--line-strong);
+      background: #ffffff;
+      color: var(--ink);
+      font-family: inherit;
+      font-size: 13px;
+      line-height: 1.4;
+      outline: none;
+    }
+
+    textarea[readonly] {
+      background: #f8fafc;
+      color: #334155;
+    }
+
+    .helper {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .event-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .event-card {
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, #ffffff, #fbfdff);
+    }
+
+    .event-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .event-title {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.4;
+      font-weight: 800;
+    }
+
+    .event-chip {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: var(--amber-soft);
+      color: var(--amber);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .event-remove {
+      border: none;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #fee2e2;
+      color: var(--red-dark);
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .event-meta-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .event-meta {
+      padding: 9px 10px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+    }
+
+    .event-meta-label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .event-meta-value {
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .event-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .event-field-label {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .event-helper {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .event-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 12px;
+    }
+
+    .btn-add {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: var(--blue-soft);
+      color: var(--blue-dark);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+    }
+
+    .validation {
+      padding: 12px 13px;
+      border-radius: 14px;
+      border: 1px solid #fecaca;
+      background: #fef2f2;
+      color: #991b1b;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 13px 15px;
+      border: none;
+      border-radius: 15px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
+    }
+
+    .btn:disabled {
+      opacity: 0.65;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    .btn-approve {
+      background: linear-gradient(180deg, var(--green), var(--green-dark));
+    }
+
+    .btn-deny {
+      background: linear-gradient(180deg, var(--red), var(--red-dark));
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="panel"></div>
+
+  <script id="review-item-data" type="application/json"><?!= JSON.stringify(reviewItem) ?></script>
+
+  <script>
+    const reviewItem = JSON.parse(
+      document.getElementById('review-item-data').textContent
+    );
+    let calendarEventsState = [];
+    let calendarValidationMessage = '';
+    let calendarStateInitialized = false;
+
+    function init() {
+      if (reviewItem.type === 'calendar' && !calendarStateInitialized) {
+        calendarEventsState = (reviewItem.data.eventsToNote || []).map(function(eventItem) {
+          return {
+            eventType: eventItem.eventType || '',
+            eventDateTimeLocal: toDateTimeLocalValue(eventItem.eventDateTimeSydney || ''),
+            eventDateTimeText: eventItem.eventDateTimeText || '',
+            eventBasis: eventItem.eventBasis || ''
+          };
+        });
+        calendarStateInitialized = true;
+      }
+
+      const app = document.getElementById('app');
+      app.replaceChildren();
+      app.appendChild(buildHero(reviewItem));
+
+      if (reviewItem.type === 'calendar') {
+        renderCalendarSections(app, reviewItem);
+      } else {
+        renderStandardSections(app, reviewItem);
+      }
+
+      app.appendChild(buildActions());
+    }
+
+    function buildHero(item) {
+      const hero = document.createElement('section');
+      hero.className = 'hero';
+
+      const top = document.createElement('div');
+      top.className = 'hero-top';
+
+      const left = document.createElement('div');
+
+      const badge = document.createElement('span');
+      badge.className = 'badge' + (item.type === 'calendar' ? ' badge-calendar' : '');
+      badge.textContent = item.type === 'calendar' ? 'Calendar Review' : 'Standard Review';
+      left.appendChild(badge);
+
+      const title = document.createElement('h1');
+      title.className = 'hero-title';
+      title.textContent = item.title || 'Review Item';
+      left.appendChild(title);
+
+      const subtitle = document.createElement('p');
+      subtitle.className = 'hero-subtitle';
+      subtitle.textContent = item.subtitle || item.reviewStatus || '';
+      left.appendChild(subtitle);
+
+      top.appendChild(left);
+      hero.appendChild(top);
+
+      const grid = document.createElement('div');
+      grid.className = 'info-grid';
+      buildHeroInfoCards(item).forEach(function(card) {
+        grid.appendChild(card);
+      });
+      hero.appendChild(grid);
+
+      return hero;
+    }
+
+    function buildHeroInfoCards(item) {
+      if (item.type === 'calendar') {
+        return [
+          buildInfoCard('Case Number', item.data.caseNumber || 'Not provided'),
+          buildInfoCard('Rego', item.data.rego || 'Not provided'),
+          buildInfoCard('Case Status', item.data.requestStatus || item.reviewStatus || 'Not provided')
+        ];
+      }
+
+      return [
+        buildInfoCard('Status', item.reviewStatus || 'Awaiting Review'),
+        buildInfoCard('Received', item.data.emailDateText || 'Not provided'),
+        buildInfoCard('Rego', item.data.rego || 'Not provided')
+      ];
+    }
+
+    function buildInfoCard(label, value) {
+      const card = document.createElement('div');
+      card.className = 'info-card';
+
+      const labelNode = document.createElement('span');
+      labelNode.className = 'info-label';
+      labelNode.textContent = label;
+      card.appendChild(labelNode);
+
+      const valueNode = document.createElement('div');
+      valueNode.className = 'info-value';
+      valueNode.textContent = value;
+      card.appendChild(valueNode);
+
+      return card;
+    }
+
+    function renderStandardSections(app, item) {
+      app.appendChild(buildTextareaSection(
+        'AI-generated Summary',
+        'Review the summary below before confirming the notes.',
+        item.data.aiSummary || '',
+        true
+      ));
+
+      app.appendChild(buildTextareaSection(
+        'Pending AI Notes',
+        'Edit the notes below before approving the review.',
+        item.data.aiNotes || '',
+        false
+      ));
+    }
+
+    function renderCalendarSections(app, item) {
+      app.appendChild(buildCopySection(
+        'Reason For Calendar Review',
+        item.data.reason || 'No reason provided.'
+      ));
+      app.appendChild(buildCalendarEventsSection());
+    }
+
+    function buildTextareaSection(titleText, helperText, value, readOnly) {
+      const section = document.createElement('section');
+      section.className = 'section';
+
+      const title = document.createElement('h2');
+      title.className = 'section-title';
+      title.textContent = titleText;
+      section.appendChild(title);
+
+      const helper = document.createElement('p');
+      helper.className = 'helper';
+      helper.textContent = helperText;
+      section.appendChild(helper);
+
+      const textarea = document.createElement('textarea');
+      if (readOnly) {
+        textarea.id = 'reviewNotesReadonly';
+        textarea.readOnly = true;
+      } else {
+        textarea.id = 'reviewerNotes';
+      }
+      textarea.value = value;
+      section.appendChild(textarea);
+
+      return section;
+    }
+
+    function buildCopySection(titleText, value) {
+      const section = document.createElement('section');
+      section.className = 'section';
+
+      const title = document.createElement('h2');
+      title.className = 'section-title';
+      title.textContent = titleText;
+      section.appendChild(title);
+
+      const copy = document.createElement('p');
+      copy.className = 'section-copy';
+      copy.textContent = value;
+      section.appendChild(copy);
+
+      return section;
+    }
+
+    function buildCalendarEventsSection() {
+      const section = document.createElement('section');
+      section.className = 'section';
+
+      const title = document.createElement('h2');
+      title.className = 'section-title';
+      title.textContent = 'Events To Note';
+      section.appendChild(title);
+
+      const helper = document.createElement('p');
+      helper.className = 'event-helper';
+      helper.textContent = 'Edit event details below. Datetimes are entered and saved as Australia/Sydney time. At least one event is required for approval.';
+      section.appendChild(helper);
+
+      if (calendarValidationMessage) {
+        const validation = document.createElement('div');
+        validation.className = 'validation';
+        validation.textContent = calendarValidationMessage;
+        section.appendChild(validation);
+      }
+
+      const list = document.createElement('div');
+      list.className = 'event-list';
+
+      if (!calendarEventsState.length) {
+        const empty = document.createElement('p');
+        empty.className = 'section-copy section-copy-muted';
+        empty.textContent = 'No events remain. Add an event or deny the review.';
+        section.appendChild(empty);
+      }
+
+      calendarEventsState.forEach(function(eventItem, index) {
+        const card = document.createElement('article');
+        card.className = 'event-card';
+
+        const head = document.createElement('div');
+        head.className = 'event-head';
+
+        const eventTitle = document.createElement('h3');
+        eventTitle.className = 'event-title';
+        eventTitle.textContent = eventItem.eventType || 'New Event';
+        head.appendChild(eventTitle);
+
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'event-remove';
+        removeButton.textContent = 'Remove';
+        removeButton.addEventListener('click', function() {
+          removeCalendarEvent(index);
+        });
+        head.appendChild(removeButton);
+
+        card.appendChild(head);
+
+        const grid = document.createElement('div');
+        grid.className = 'event-meta-grid';
+        grid.appendChild(buildEventField('Event Type', 'text', eventItem.eventType, function(value) {
+          updateCalendarEventField(index, 'eventType', value);
+        }));
+        grid.appendChild(buildEventField('Sydney Datetime', 'datetime-local', eventItem.eventDateTimeLocal, function(value) {
+          updateCalendarEventField(index, 'eventDateTimeLocal', value);
+        }));
+        grid.appendChild(buildEventTextareaField('Detail', eventItem.eventDateTimeText, function(value) {
+          updateCalendarEventField(index, 'eventDateTimeText', value);
+        }));
+        grid.appendChild(buildEventField('Basis', 'text', eventItem.eventBasis, function(value) {
+          updateCalendarEventField(index, 'eventBasis', value);
+        }));
+        card.appendChild(grid);
+
+        list.appendChild(card);
+      });
+
+      section.appendChild(list);
+
+      const toolbar = document.createElement('div');
+      toolbar.className = 'event-toolbar';
+
+      const addButton = document.createElement('button');
+      addButton.type = 'button';
+      addButton.className = 'btn-add';
+      addButton.textContent = '+ Add Event';
+      addButton.addEventListener('click', addCalendarEvent);
+      toolbar.appendChild(addButton);
+
+      section.appendChild(toolbar);
+      return section;
+    }
+
+    function buildEventField(label, type, value, onChange) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'event-field';
+
+      const metaLabel = document.createElement('span');
+      metaLabel.className = 'event-field-label';
+      metaLabel.textContent = label;
+      wrapper.appendChild(metaLabel);
+
+      const input = document.createElement('input');
+      input.type = type;
+      input.value = value || '';
+      input.addEventListener('input', function(event) {
+        onChange(event.target.value);
+      });
+      wrapper.appendChild(input);
+
+      return wrapper;
+    }
+
+    function buildEventTextareaField(label, value, onChange) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'event-field';
+
+      const metaLabel = document.createElement('span');
+      metaLabel.className = 'event-field-label';
+      metaLabel.textContent = label;
+      wrapper.appendChild(metaLabel);
+
+      const textarea = document.createElement('textarea');
+      textarea.value = value || '';
+      textarea.style.minHeight = '96px';
+      textarea.addEventListener('input', function(event) {
+        onChange(event.target.value);
+      });
+      wrapper.appendChild(textarea);
+
+      return wrapper;
+    }
+
+    function buildActions() {
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+
+      const approveBtn = document.createElement('button');
+      approveBtn.id = 'approveBtn';
+      approveBtn.className = 'btn btn-approve';
+      approveBtn.textContent = 'APPROVE';
+      approveBtn.addEventListener('click', submitApproval);
+      actions.appendChild(approveBtn);
+
+      const denyBtn = document.createElement('button');
+      denyBtn.id = 'denyBtn';
+      denyBtn.className = 'btn btn-deny';
+      denyBtn.textContent = 'DENY';
+      denyBtn.addEventListener('click', submitDenial);
+      actions.appendChild(denyBtn);
+
+      return actions;
+    }
+
+    function setLoadingState(approveText, denyText) {
+      document.getElementById('approveBtn').disabled = true;
+      document.getElementById('denyBtn').disabled = true;
+      document.getElementById('approveBtn').textContent = approveText;
+      document.getElementById('denyBtn').textContent = denyText;
+    }
+
+    function resetButtons() {
+      document.getElementById('approveBtn').disabled = false;
+      document.getElementById('denyBtn').disabled = false;
+      document.getElementById('approveBtn').textContent = 'APPROVE';
+      document.getElementById('denyBtn').textContent = 'DENY';
+    }
+
+    function getClientPayload() {
+      if (reviewItem.type === 'calendar') {
+        return {
+          events: calendarEventsState.map(function(eventItem) {
+            return {
+              eventType: eventItem.eventType || '',
+              eventDateTimeLocal: eventItem.eventDateTimeLocal || '',
+              eventDateTimeText: eventItem.eventDateTimeText || '',
+              eventBasis: eventItem.eventBasis || ''
+            };
+          })
+        };
+      }
+
+      const notesField = document.getElementById('reviewerNotes');
+      return {
+        modifiedNotes: notesField ? notesField.value : ''
+      };
+    }
+
+    function submitApproval() {
+      if (reviewItem.type === 'calendar') {
+        const validationMessage = validateCalendarEventsClient();
+        if (validationMessage) {
+          calendarValidationMessage = validationMessage;
+          init();
+          return;
+        }
+      }
+
+      setLoadingState('Processing...', 'DENY');
+
+      google.script.run
+        .withSuccessHandler(function() {
+          google.script.host.close();
+        })
+        .withFailureHandler(function(error) {
+          console.error(error);
+          resetButtons();
+        })
+        .approveReview(reviewItem.reviewKey, getClientPayload());
+    }
+
+    function submitDenial() {
+      calendarValidationMessage = '';
+      setLoadingState('APPROVE', 'Processing...');
+
+      google.script.run
+        .withSuccessHandler(function() {
+          google.script.host.close();
+        })
+        .withFailureHandler(function(error) {
+          console.error(error);
+          resetButtons();
+        })
+        .denyReview(reviewItem.reviewKey, getClientPayload());
+    }
+
+    function addCalendarEvent() {
+      calendarValidationMessage = '';
+      calendarEventsState.push({
+        eventType: '',
+        eventDateTimeLocal: '',
+        eventDateTimeText: '',
+        eventBasis: ''
+      });
+      init();
+    }
+
+    function removeCalendarEvent(index) {
+      calendarValidationMessage = '';
+      calendarEventsState.splice(index, 1);
+      init();
+    }
+
+    function updateCalendarEventField(index, key, value) {
+      calendarValidationMessage = '';
+      calendarEventsState[index][key] = value;
+    }
+
+    function validateCalendarEventsClient() {
+      if (!calendarEventsState.length) {
+        return 'At least one event is required before approval.';
+      }
+
+      for (let index = 0; index < calendarEventsState.length; index++) {
+        const eventItem = calendarEventsState[index];
+        const label = 'Event ' + (index + 1);
+
+        if (!String(eventItem.eventType || '').trim()) {
+          return label + ' is missing an event type.';
+        }
+
+        if (!String(eventItem.eventDateTimeLocal || '').trim()) {
+          return label + ' is missing a Sydney datetime.';
+        }
+      }
+
+      return '';
+    }
+
+    function toDateTimeLocalValue(value) {
+      const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/.exec(String(value || ''));
+      return match ? match[1] : '';
+    }
+
+    init();
+  </script>
+</body>
+</html>
