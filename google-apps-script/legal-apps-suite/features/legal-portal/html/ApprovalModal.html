@@ -1,3 +1,159 @@
+<!-- <!DOCTYPE html>
+<html>
+<head>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+    }
+
+    body {
+      padding: 15px;
+      box-sizing: border-box;
+    }
+
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-family: sans-serif;
+      display: block;
+    }
+
+    .summary-box,
+    .notes-box {
+      height: 100px;
+      resize: none;
+      margin-bottom: 12px;
+    }
+
+    .summary-box {
+      background: #f9f9f9;
+      color: #444;
+    }
+
+    .label {
+      display: block;
+      font-size: 13px;
+      font-weight: bold;
+      margin: 0 0 6px 0;
+      color: #333;
+    }
+
+    .helper-text {
+      font-size: 13px;
+      color: #666;
+      margin: 0 0 8px 0;
+    }
+
+    .btn {
+      color: white;
+      padding: 15px;
+      width: 100%;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 0;
+      display: block;
+    }
+
+    .approve-btn {
+      background: #28a745;
+      margin-bottom: 8px;
+    }
+
+    .approve-btn:disabled {
+      background: #ccc;
+    }
+
+    .deny-btn {
+      background: #dc3545;
+    }
+
+    .deny-btn:disabled {
+      background: #ccc;
+    }
+
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .top-row .label {
+      margin: 0;
+    }
+
+    .date-info {
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-row">
+    <label for="aiSummary" class="label">AI-generated Summary</label>
+    <span class="date-info">Received Date: <?= claim.emailDate ?></span>
+  </div>
+  <textarea id="aiSummary" class="summary-box" readonly><?= claim.aiSummary ?></textarea>
+  </br>
+  <p class="label">
+    Edit AI-generated notes before saving:
+  </p>
+  <textarea id="notes" class="notes-box"><?= claim.aiNotes ?></textarea>
+
+  <button id="approveBtn" class="btn approve-btn" onclick="submitApproval()">APPROVE</button>
+  <button id="denyBtn" class="btn deny-btn" onclick="denyClaim()">DELETE</button>
+
+  <script>
+    function setLoadingState(approveText, denyText) {
+      document.getElementById('approveBtn').disabled = true;
+      document.getElementById('denyBtn').disabled = true;
+      document.getElementById('approveBtn').innerText = approveText;
+      document.getElementById('denyBtn').innerText = denyText;
+    }
+
+    function submitApproval() {
+      const notes = document.getElementById('notes').value;
+      setLoadingState("Processing...", "DELETE");
+
+      google.script.run
+        .withSuccessHandler(() => {
+          google.script.host.close();
+        })
+        .withFailureHandler(() => {
+          document.getElementById('approveBtn').disabled = false;
+          document.getElementById('denyBtn').disabled = false;
+          document.getElementById('approveBtn').innerText = "APPROVE";
+          document.getElementById('denyBtn').innerText = "DELETE";
+        })
+        .finalizeToN8n(<?= claim.row ?>, notes, "<?= claim.resumeUrl ?>");
+    }
+
+    function denyClaim() {
+      setLoadingState("APPROVE", "Deleting...");
+
+      google.script.run
+        .withSuccessHandler(() => {
+          google.script.host.close();
+        })
+        .withFailureHandler(() => {
+          document.getElementById('approveBtn').disabled = false;
+          document.getElementById('denyBtn').disabled = false;
+          document.getElementById('approveBtn').innerText = "APPROVE";
+          document.getElementById('denyBtn').innerText = "DELETE";
+        })
+        .denyClaim(<?= claim.row ?>, "<?= claim.resumeUrl ?>");
+    }
+  </script>
+</body>
+</html> -->
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -445,6 +601,7 @@
         return [
           buildInfoCard('Case Number', item.data.caseNumber || 'Not provided'),
           buildInfoCard('Rego', item.data.rego || 'Not provided'),
+          //buildInfoCard('Party 1 Name', item.data.party1Name || 'Not provided'),
           buildInfoCard('Case Status', item.data.requestStatus || item.reviewStatus || 'Not provided')
         ];
       }

@@ -1,6 +1,8 @@
 const CLAIM_STATS_CONFIG = {
   logSheetName: '_Claim Stats Log',
   sourceSheetName: 'Liability',
+  droppedCasesSheetName: 'Dropped Cases',
+  droppedCasesSection: 'DROPPED CASES',
   timezone: 'Australia/Sydney',
   sectionLabels: {
     newClaims: 'NEW CLAIMS',
@@ -31,19 +33,12 @@ const CLAIM_STATS_CONFIG = {
   eventTypes: {
     baselineNewClaim: 'BASELINE_NEW_CLAIM',
     baselineLiabilityConfirmed: 'BASELINE_LIABILITY_CONFIRMED',
+    baselineDroppedCase: 'BASELINE_DROPPED_CASE',
     newClaim: 'NEW_CLAIM',
-    liabilityConfirmed: 'LIABILITY_CONFIRMED'
+    liabilityConfirmed: 'LIABILITY_CONFIRMED',
+    droppedCase: 'DROPPED_CASE'
   }
 };
-
-function onOpen_ClaimStatistics() {
-  SpreadsheetApp.getUi()
-    .createMenu('Analytics')
-    .addItem('Open Claim Statistics', 'showClaimStatsModal')
-    .addSeparator()
-    .addItem('Diagnostics', 'showClaimStatsDiagnostics')
-    .addToUi();
-}
 
 function showClaimStatsDiagnostics() {
   try {
@@ -65,11 +60,11 @@ function showClaimStatsDiagnostics() {
 
 function showClaimStatsModal() {
   try {
-    const report = getClaimStatsReport('day', '');
+    const report = getClaimStatsReport('custom', '', '');
     const template = HtmlService.createTemplateFromFile('ClaimStatsModal');
     template.report = report;
 
-    const html = template.evaluate().setWidth(700).setHeight(780);
+    const html = template.evaluate().setWidth(700).setHeight(680);
     SpreadsheetApp.getUi().showModalDialog(html, 'Claim Statistics');
   } catch (error) {
     SpreadsheetApp.getUi().alert(
@@ -80,9 +75,9 @@ function showClaimStatsModal() {
   }
 }
 
-function getClaimStatsReport(period, anchorDateKey) {
+function getClaimStatsReport(preset, fromDateKey, toDateKey) {
   const result = refreshClaimStatsLog_();
-  return buildClaimStatsReport_(period || 'day', result.loggedAt, anchorDateKey || '');
+  return buildClaimStatsReport_(preset || 'custom', result.loggedAt, fromDateKey || '', toDateKey || '');
 }
 
 function refreshClaimStatsLog_() {
@@ -99,6 +94,7 @@ function refreshClaimStatsLog_() {
 
     if (!logState.hasBaseline) {
       appendClaimStatsBaselineRows_(logSheet, snapshot, dateKeys);
+      appendClaimStatsDroppedBaselineRows_(logSheet, snapshot, dateKeys);
       return {
         initialized: true,
         loggedAt: now
@@ -106,6 +102,16 @@ function refreshClaimStatsLog_() {
     }
 
     appendClaimStatsEventRows_(logSheet, snapshot, logState, dateKeys);
+
+    if (!logState.hasDroppedBaseline) {
+      // The Dropped Cases tab was added after the log was already initialized
+      // for Liability. Backfill a one-time baseline so pre-existing dropped rows
+      // are recorded but not counted, matching the Liability baseline behavior.
+      appendClaimStatsDroppedBaselineRows_(logSheet, snapshot, dateKeys);
+    } else {
+      appendClaimStatsDroppedEventRows_(logSheet, snapshot, logState, dateKeys);
+    }
+
     return {
       initialized: false,
       loggedAt: now
@@ -169,8 +175,37 @@ function scanClaimStatsSections_(spreadsheet) {
 
   return {
     newClaims: extractClaimStatsRows_(values, sheet.getName(), sections.newClaims, headerIndexes),
-    liabilityConfirmed: extractClaimStatsRows_(values, sheet.getName(), sections.liabilityConfirmed, headerIndexes)
+    liabilityConfirmed: extractClaimStatsRows_(values, sheet.getName(), sections.liabilityConfirmed, headerIndexes),
+    droppedCases: scanClaimStatsDroppedRows_(spreadsheet, headerIndexes)
   };
+}
+
+function scanClaimStatsDroppedRows_(spreadsheet, headerIndexes) {
+  const sheet = spreadsheet.getSheetByName(CLAIM_STATS_CONFIG.droppedCasesSheetName);
+  if (!sheet) {
+    return [];
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 1) {
+    return [];
+  }
+
+  const values = sheet.getDataRange().getValues();
+  if (!values.length) {
+    return [];
+  }
+
+  // The Dropped Cases tab has no header row, so every row (starting at row 1)
+  // is treated as data. Column positions match the Liability data columns, so
+  // the header indexes derived from the Liability header row are reused here.
+  const section = {
+    label: CLAIM_STATS_CONFIG.droppedCasesSection,
+    startRow: 1,
+    endRow: values.length
+  };
+
+  return extractClaimStatsRows_(values, sheet.getName(), section, headerIndexes);
 }
 
 function getClaimStatsHeaderIndexes_(headerRow) {
@@ -311,8 +346,10 @@ function readClaimStatsLogState_(logSheet) {
   const claimKeyIndex = getClaimStatsLogColumnIndex_('CLAIM KEY');
   const state = {
     hasBaseline: false,
+    hasDroppedBaseline: false,
     newClaimKeys: {},
     liabilityConfirmedKeys: {},
+    droppedCaseKeys: {},
     events: []
   };
 
@@ -342,6 +379,18 @@ function readClaimStatsLogState_(logSheet) {
       eventType === CLAIM_STATS_CONFIG.eventTypes.liabilityConfirmed
     ) {
       state.liabilityConfirmedKeys[claimKey] = true;
+    }
+
+    if (eventType === CLAIM_STATS_CONFIG.eventTypes.baselineDroppedCase) {
+      state.hasBaseline = true;
+      state.hasDroppedBaseline = true;
+    }
+
+    if (
+      eventType === CLAIM_STATS_CONFIG.eventTypes.baselineDroppedCase ||
+      eventType === CLAIM_STATS_CONFIG.eventTypes.droppedCase
+    ) {
+      state.droppedCaseKeys[claimKey] = true;
     }
 
     state.events.push(rowValues);
@@ -402,6 +451,41 @@ function appendClaimStatsEventRows_(logSheet, snapshot, logState, dateKeys) {
   appendClaimStatsLogRows_(logSheet, rows);
 }
 
+function appendClaimStatsDroppedBaselineRows_(logSheet, snapshot, dateKeys) {
+  const droppedCases = (snapshot && snapshot.droppedCases) || [];
+  const rows = droppedCases.map(function(claim) {
+    return buildClaimStatsLogRow_(CLAIM_STATS_CONFIG.eventTypes.baselineDroppedCase, claim, dateKeys);
+  });
+
+  if (!rows.length) {
+    rows.push(buildClaimStatsLogRow_(CLAIM_STATS_CONFIG.eventTypes.baselineDroppedCase, {
+      claimKey: '__BASELINE__',
+      claimNumber: '',
+      rego: '',
+      clientName: 'Baseline initialized with no dropped case rows',
+      insurer: '',
+      sourceSheet: CLAIM_STATS_CONFIG.droppedCasesSheetName,
+      sourceSection: CLAIM_STATS_CONFIG.droppedCasesSection,
+      sourceRow: ''
+    }, dateKeys));
+  }
+
+  appendClaimStatsLogRows_(logSheet, rows);
+}
+
+function appendClaimStatsDroppedEventRows_(logSheet, snapshot, logState, dateKeys) {
+  const rows = [];
+
+  ((snapshot && snapshot.droppedCases) || []).forEach(function(claim) {
+    if (!logState.droppedCaseKeys[claim.claimKey]) {
+      rows.push(buildClaimStatsLogRow_(CLAIM_STATS_CONFIG.eventTypes.droppedCase, claim, dateKeys));
+      logState.droppedCaseKeys[claim.claimKey] = true;
+    }
+  });
+
+  appendClaimStatsLogRows_(logSheet, rows);
+}
+
 function appendClaimStatsLogRows_(logSheet, rows) {
   if (!rows.length) {
     return;
@@ -438,40 +522,45 @@ function buildClaimStatsLogRow_(eventType, claim, dateKeys) {
   ];
 }
 
-function buildClaimStatsReport_(period, now, anchorDateKey) {
+function buildClaimStatsReport_(preset, now, fromDateKey, toDateKey) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const logSheet = ensureClaimStatsLogSheet_(spreadsheet);
   const dateKeys = buildClaimStatsDateKeys_(now || new Date());
-  const anchorKeys = buildClaimStatsAnchorDateKeys_(anchorDateKey, now || new Date());
-  const periodConfig = getClaimStatsPeriodConfig_(period, anchorKeys);
+  const rangeDefaults = buildClaimStatsRangeDefaults_(now || new Date());
+  const rangeConfig = getClaimStatsRangeConfig_(preset, fromDateKey, toDateKey, rangeDefaults);
   const rows = getClaimStatsLogValues_(logSheet);
   const reportRows = rows.filter(function(rowValues) {
-    return isClaimStatsRowInPeriod_(rowValues, periodConfig);
+    return isClaimStatsRowInRange_(rowValues, rangeConfig);
   });
   const grouped = groupClaimStatsReportRows_(reportRows);
   const samePeriodClaims = getClaimStatsIntersection_(grouped.newClaims, grouped.liabilityConfirmed);
   const newClaims = claimStatsObjectValues_(grouped.newClaims);
   const liabilityConfirmed = claimStatsObjectValues_(grouped.liabilityConfirmed);
+  const droppedCases = claimStatsObjectValues_(grouped.droppedCases);
 
   return {
-    title: 'Claim Statistics - ' + periodConfig.label,
+    title: 'Claim Statistics - ' + rangeConfig.label,
     badge: 'Claim Statistics',
-    subtitle: periodConfig.rangeLabel + ' - ' + CLAIM_STATS_CONFIG.timezone,
-    period: periodConfig.period,
-    anchorDateKey: anchorKeys.dateKey,
-    rangeLabel: periodConfig.rangeLabel,
-    filterLabel: periodConfig.keyColumn
-      ? periodConfig.keyColumn + ' = ' + periodConfig.keyValue
-      : 'All non-baseline events',
+    subtitle: rangeConfig.rangeLabel + ' - ' + CLAIM_STATS_CONFIG.timezone,
+    preset: rangeConfig.preset,
+    fromDateKey: rangeConfig.fromDateKey,
+    toDateKey: rangeConfig.toDateKey,
+    rangeDefaults: rangeDefaults,
+    rangeLabel: rangeConfig.rangeLabel,
+    filterLabel: rangeConfig.isAll
+      ? 'All non-baseline events'
+      : 'DATE KEY SYDNEY between ' + rangeConfig.fromDateKey + ' and ' + rangeConfig.toDateKey,
     lastScanned: dateKeys.loggedAtDisplay,
     totals: {
       newClaims: newClaims.length,
       liabilityConfirmed: liabilityConfirmed.length,
+      droppedCases: droppedCases.length,
       samePeriodConfirmed: samePeriodClaims.length
     },
     sections: {
       newClaims: newClaims,
       liabilityConfirmed: liabilityConfirmed,
+      droppedCases: droppedCases,
       samePeriodConfirmed: samePeriodClaims
     }
   };
@@ -505,99 +594,163 @@ function buildClaimStatsDiagnosticsReport_(now) {
 
   const newClaimCount = counts[CLAIM_STATS_CONFIG.eventTypes.newClaim] || 0;
   const liabilityConfirmedCount = counts[CLAIM_STATS_CONFIG.eventTypes.liabilityConfirmed] || 0;
+  const droppedCaseCount = counts[CLAIM_STATS_CONFIG.eventTypes.droppedCase] || 0;
 
   return {
     title: 'Claim Statistics Diagnostics',
     lastScanned: dateKeys.loggedAtDisplay,
     currentScan: {
       newClaimsRows: snapshot.newClaims.length,
-      liabilityConfirmedRows: snapshot.liabilityConfirmed.length
+      liabilityConfirmedRows: snapshot.liabilityConfirmed.length,
+      droppedCasesRows: snapshot.droppedCases.length
     },
     logSummary: {
       totalRows: rows.length,
-      reportableEvents: newClaimCount + liabilityConfirmedCount
+      reportableEvents: newClaimCount + liabilityConfirmedCount + droppedCaseCount
     },
     eventCounts: {
       baselineNewClaim: counts[CLAIM_STATS_CONFIG.eventTypes.baselineNewClaim] || 0,
       baselineLiabilityConfirmed: counts[CLAIM_STATS_CONFIG.eventTypes.baselineLiabilityConfirmed] || 0,
+      baselineDroppedCase: counts[CLAIM_STATS_CONFIG.eventTypes.baselineDroppedCase] || 0,
       newClaim: newClaimCount,
-      liabilityConfirmed: liabilityConfirmedCount
+      liabilityConfirmed: liabilityConfirmedCount,
+      droppedCase: droppedCaseCount
     },
     recentRows: lastRows
   };
 }
 
-function getClaimStatsPeriodConfig_(period, dateKeys) {
-  if (period === 'all') {
+function getClaimStatsRangeConfig_(preset, fromDateKey, toDateKey, rangeDefaults) {
+  const normalizedPreset = normalizeClaimStatsPreset_(preset);
+
+  if (normalizedPreset === 'all') {
     return {
-      period: 'all',
+      preset: 'all',
       label: 'All Logged Activity',
-      keyColumn: '',
-      keyValue: '',
+      fromDateKey: '',
+      toDateKey: '',
+      isAll: true,
       rangeLabel: 'All non-baseline log events'
     };
   }
 
-  if (period === 'day' || period === 'today') {
-    return {
-      period: 'day',
-      label: 'Daily Report',
-      keyColumn: 'DATE KEY SYDNEY',
-      keyValue: dateKeys.dateKey,
-      rangeLabel: dateKeys.dateKey
-    };
-  }
+  const defaultRange = rangeDefaults[normalizedPreset] || rangeDefaults.today;
+  const normalizedFrom = claimStatsString_(fromDateKey).trim() || defaultRange.fromDateKey;
+  const normalizedTo = claimStatsString_(toDateKey).trim() || defaultRange.toDateKey;
+  validateClaimStatsDateRange_(normalizedFrom, normalizedTo);
 
-  if (period === 'week') {
-    return {
-      period: 'week',
-      label: 'Weekly Report',
-      keyColumn: 'WEEK KEY SYDNEY',
-      keyValue: dateKeys.weekKey,
-      rangeLabel: 'Week of ' + dateKeys.weekKey
-    };
-  }
-
-  if (period === 'month') {
-    return {
-      period: 'month',
-      label: 'Monthly Report',
-      keyColumn: 'MONTH KEY SYDNEY',
-      keyValue: dateKeys.monthKey,
-      rangeLabel: dateKeys.monthKey
-    };
-  }
-
-  throw new Error('Unsupported claim statistics period "' + period + '".');
+  return {
+    preset: normalizedPreset,
+    label: getClaimStatsPresetLabel_(normalizedPreset),
+    fromDateKey: normalizedFrom,
+    toDateKey: normalizedTo,
+    isAll: false,
+    rangeLabel: normalizedFrom === normalizedTo
+      ? normalizedFrom
+      : normalizedFrom + ' to ' + normalizedTo
+  };
 }
 
-function isClaimStatsRowInPeriod_(rowValues, periodConfig) {
+function normalizeClaimStatsPreset_(preset) {
+  const normalizedPreset = claimStatsString_(preset).trim().toLowerCase();
+  const aliases = {
+    day: 'today',
+    week: 'this_week',
+    month: 'this_month',
+    today: 'today',
+    this_week: 'this_week',
+    this_month: 'this_month',
+    this_year: 'this_year',
+    year: 'this_year',
+    custom: 'custom',
+    all: 'all'
+  };
+
+  if (!normalizedPreset) {
+    return 'custom';
+  }
+
+  if (!aliases[normalizedPreset]) {
+    throw new Error('Unsupported claim statistics preset "' + preset + '".');
+  }
+
+  return aliases[normalizedPreset];
+}
+
+function getClaimStatsPresetLabel_(preset) {
+  const labels = {
+    today: 'Today',
+    this_week: 'This Week',
+    this_month: 'This Month',
+    this_year: 'This Year',
+    custom: 'Custom Range',
+    all: 'All Logged Activity'
+  };
+
+  return labels[preset] || labels.today;
+}
+
+function validateClaimStatsDateRange_(fromDateKey, toDateKey) {
+  validateClaimStatsDateKey_(fromDateKey, 'From date');
+  validateClaimStatsDateKey_(toDateKey, 'To date');
+
+  if (fromDateKey > toDateKey) {
+    throw new Error('From date must be before or equal to To date.');
+  }
+}
+
+function validateClaimStatsDateKey_(dateKey, label) {
+  if (!dateKey) {
+    throw new Error(label + ' is required.');
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+    throw new Error(label + ' must use yyyy-MM-dd format.');
+  }
+
+  const parts = dateKey.split('-').map(function(part) {
+    return Number(part);
+  });
+  const date = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
+
+  if (
+    date.getFullYear() !== parts[0] ||
+    date.getMonth() !== parts[1] - 1 ||
+    date.getDate() !== parts[2]
+  ) {
+    throw new Error(label + ' is not a valid calendar date.');
+  }
+}
+
+function isClaimStatsRowInRange_(rowValues, rangeConfig) {
   const eventType = claimStatsString_(rowValues[getClaimStatsLogColumnIndex_('EVENT TYPE')]);
   const isReportableEvent = (
     eventType === CLAIM_STATS_CONFIG.eventTypes.newClaim ||
-    eventType === CLAIM_STATS_CONFIG.eventTypes.liabilityConfirmed
+    eventType === CLAIM_STATS_CONFIG.eventTypes.liabilityConfirmed ||
+    eventType === CLAIM_STATS_CONFIG.eventTypes.droppedCase
   );
 
   if (!isReportableEvent) {
     return false;
   }
 
-  if (!periodConfig.keyColumn) {
+  if (rangeConfig.isAll) {
     return true;
   }
 
   const keyValue = normalizeClaimStatsLogKeyValue_(
-    rowValues[getClaimStatsLogColumnIndex_(periodConfig.keyColumn)],
-    periodConfig.keyColumn
+    rowValues[getClaimStatsLogColumnIndex_('DATE KEY SYDNEY')],
+    'DATE KEY SYDNEY'
   );
 
-  return keyValue === periodConfig.keyValue;
+  return keyValue >= rangeConfig.fromDateKey && keyValue <= rangeConfig.toDateKey;
 }
 
 function groupClaimStatsReportRows_(rows) {
   const grouped = {
     newClaims: {},
-    liabilityConfirmed: {}
+    liabilityConfirmed: {},
+    droppedCases: {}
   };
   const eventTypeIndex = getClaimStatsLogColumnIndex_('EVENT TYPE');
   const claimKeyIndex = getClaimStatsLogColumnIndex_('CLAIM KEY');
@@ -615,6 +768,10 @@ function groupClaimStatsReportRows_(rows) {
 
     if (eventType === CLAIM_STATS_CONFIG.eventTypes.liabilityConfirmed && !grouped.liabilityConfirmed[claimKey]) {
       grouped.liabilityConfirmed[claimKey] = buildClaimStatsReportClaim_(rowValues);
+    }
+
+    if (eventType === CLAIM_STATS_CONFIG.eventTypes.droppedCase && !grouped.droppedCases[claimKey]) {
+      grouped.droppedCases[claimKey] = buildClaimStatsReportClaim_(rowValues);
     }
   });
 
@@ -662,22 +819,52 @@ function buildClaimStatsDateKeys_(date) {
   };
 }
 
-function buildClaimStatsAnchorDateKeys_(anchorDateKey, fallbackDate) {
-  const normalizedDateKey = claimStatsString_(anchorDateKey).trim();
+function buildClaimStatsRangeDefaults_(date) {
+  const dateKeys = buildClaimStatsDateKeys_(date || new Date());
+  const weekStartDate = parseClaimStatsDateKey_(dateKeys.weekKey);
+  const weekEndDate = new Date(weekStartDate.getTime() + 6 * 24 * 60 * 60 * 1000);
+  const monthParts = dateKeys.monthKey.split('-').map(function(part) {
+    return Number(part);
+  });
+  const monthStartDate = new Date(monthParts[0], monthParts[1] - 1, 1, 12, 0, 0);
+  const monthEndDate = new Date(monthParts[0], monthParts[1], 0, 12, 0, 0);
+  const yearStartDate = new Date(monthParts[0], 0, 1, 12, 0, 0);
+  const yearEndDate = new Date(monthParts[0], 11, 31, 12, 0, 0);
 
-  if (normalizedDateKey) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedDateKey)) {
-      throw new Error('Report date must use yyyy-MM-dd format.');
-    }
+  return {
+    today: {
+      fromDateKey: dateKeys.dateKey,
+      toDateKey: dateKeys.dateKey
+    },
+    this_week: {
+      fromDateKey: dateKeys.weekKey,
+      toDateKey: Utilities.formatDate(weekEndDate, CLAIM_STATS_CONFIG.timezone, 'yyyy-MM-dd')
+    },
+    this_month: {
+      fromDateKey: Utilities.formatDate(monthStartDate, CLAIM_STATS_CONFIG.timezone, 'yyyy-MM-dd'),
+      toDateKey: Utilities.formatDate(monthEndDate, CLAIM_STATS_CONFIG.timezone, 'yyyy-MM-dd')
+    },
+    this_year: {
+      fromDateKey: Utilities.formatDate(yearStartDate, CLAIM_STATS_CONFIG.timezone, 'yyyy-MM-dd'),
+      toDateKey: Utilities.formatDate(yearEndDate, CLAIM_STATS_CONFIG.timezone, 'yyyy-MM-dd')
+    },
+    custom: {
+      fromDateKey: dateKeys.dateKey,
+      toDateKey: dateKeys.dateKey
+    },
+    all: {
+      fromDateKey: '',
+      toDateKey: ''
+    },
+    currentDateKey: dateKeys.dateKey
+  };
+}
 
-    const dateParts = normalizedDateKey.split('-').map(function(part) {
-      return Number(part);
-    });
-    const anchorDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], 12, 0, 0);
-    return buildClaimStatsDateKeys_(anchorDate);
-  }
-
-  return buildClaimStatsDateKeys_(fallbackDate || new Date());
+function parseClaimStatsDateKey_(dateKey) {
+  const parts = dateKey.split('-').map(function(part) {
+    return Number(part);
+  });
+  return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
 }
 
 function getClaimStatsLogColumnIndex_(headerName) {

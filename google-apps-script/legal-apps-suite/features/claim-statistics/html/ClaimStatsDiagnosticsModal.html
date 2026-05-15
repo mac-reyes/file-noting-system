@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --bg: #eef3f8;
+      --panel: #ffffff;
+      --ink: #17212b;
+      --muted: #66758a;
+      --line: #d7e0ea;
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --blue-soft: #e8f0ff;
+      --amber-soft: #fff4e5;
+      --shadow: 0 12px 28px rgba(15, 23, 42, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(180deg, #f8fbff, var(--bg));
+      color: var(--ink);
+    }
+
+    body {
+      padding: 16px;
+    }
+
+    .modal-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .hero,
+    .section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 18px;
+    }
+
+    .badge {
+      display: inline-flex;
+      margin-bottom: 8px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: var(--blue-dark);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .hero-title {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.15;
+      font-weight: 800;
+    }
+
+    .hero-subtitle,
+    .metric-note,
+    .section-copy,
+    .entry-time {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .hero-subtitle {
+      margin: 6px 0 0;
+    }
+
+    .section {
+      padding: 14px;
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric-card {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .metric-card-warm {
+      background: var(--amber-soft);
+      border-color: #fed7aa;
+    }
+
+    .metric-label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .metric-value {
+      margin-top: 4px;
+      font-size: 24px;
+      line-height: 1;
+      font-weight: 800;
+    }
+
+    .metric-note {
+      margin-top: 4px;
+      font-size: 12px;
+    }
+
+    .count-list,
+    .entry-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .count-row,
+    .entry-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .count-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px;
+      font-size: 13px;
+    }
+
+    .count-value {
+      font-weight: 800;
+    }
+
+    .entry-card {
+      padding: 11px;
+    }
+
+    .entry-type {
+      display: inline-flex;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: var(--blue-dark);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .entry-key {
+      margin: 7px 0 0;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .entry-time {
+      margin: 4px 0 0;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      min-height: 38px;
+      border: 0;
+      border-radius: 8px;
+      padding: 0 14px;
+      cursor: pointer;
+      color: #fff;
+      background: var(--blue);
+      font-size: 13px;
+      font-weight: 800;
+    }
+  </style>
+</head>
+<body>
+  <script id="claim-stats-diagnostics-data" type="application/json"><?!= JSON.stringify(diagnostics) ?></script>
+  <div id="app" class="modal-panel"></div>
+
+  <script>
+    const diagnostics = readJson('claim-stats-diagnostics-data');
+
+    function readJson(id) {
+      const node = document.getElementById(id);
+      try {
+        return JSON.parse(node && node.textContent ? node.textContent : '{}');
+      } catch (error) {
+        return {};
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value === null || value === undefined ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function renderDiagnostics(data) {
+      const app = document.getElementById('app');
+      app.innerHTML = [
+        renderHero(data),
+        renderMetricSection('Current Sheet Scan', [
+          ['New Claims Section', data.currentScan && data.currentScan.newClaimsRows, 'rows'],
+          ['Liability Confirmed', data.currentScan && data.currentScan.liabilityConfirmedRows, 'rows'],
+          ['Dropped Cases', data.currentScan && data.currentScan.droppedCasesRows, 'rows']
+        ]),
+        renderMetricSection('Log Summary', [
+          ['Total Log Rows', data.logSummary && data.logSummary.totalRows, 'rows'],
+          ['Reportable Events', data.logSummary && data.logSummary.reportableEvents, 'events']
+        ], true),
+        renderEventCounts(data.eventCounts || {}),
+        renderRecentRows(data.recentRows || []),
+        renderNotes(),
+        '<div class="actions"><button class="btn" type="button" id="closeButton">Close</button></div>'
+      ].join('');
+      document.getElementById('closeButton').addEventListener('click', function() {
+        google.script.host.close();
+      });
+    }
+
+    function renderHero(data) {
+      return [
+        '<section class="hero">',
+          '<span class="badge">Diagnostics</span>',
+          '<h1 class="hero-title">' + escapeHtml(data.title || 'Claim Statistics Diagnostics') + '</h1>',
+          '<p class="hero-subtitle">Last scanned: ' + escapeHtml(data.lastScanned || 'Not available') + '</p>',
+        '</section>'
+      ].join('');
+    }
+
+    function renderMetricSection(title, metrics, warm) {
+      return [
+        '<section class="section">',
+          '<h2 class="section-title">' + escapeHtml(title) + '</h2>',
+          '<div class="metric-grid">',
+            metrics.map(function(metric) {
+              return metricCard(metric[0], metric[1], metric[2], warm ? 'metric-card-warm' : '');
+            }).join(''),
+          '</div>',
+        '</section>'
+      ].join('');
+    }
+
+    function metricCard(label, value, note, toneClass) {
+      return [
+        '<div class="metric-card ' + toneClass + '">',
+          '<span class="metric-label">' + escapeHtml(label) + '</span>',
+          '<div class="metric-value">' + escapeHtml(value || 0) + '</div>',
+          '<div class="metric-note">' + escapeHtml(note || '') + '</div>',
+        '</div>'
+      ].join('');
+    }
+
+    function renderEventCounts(counts) {
+      const rows = [
+        ['Baseline New Claims', counts.baselineNewClaim],
+        ['Baseline Liability Confirmed', counts.baselineLiabilityConfirmed],
+        ['Baseline Dropped Cases', counts.baselineDroppedCase],
+        ['New Claims', counts.newClaim],
+        ['Liability Confirmed', counts.liabilityConfirmed],
+        ['Dropped Cases', counts.droppedCase]
+      ];
+      return [
+        '<section class="section">',
+          '<h2 class="section-title">Event Counts</h2>',
+          '<div class="count-list">',
+            rows.map(function(row) {
+              return '<div class="count-row"><div>' + escapeHtml(row[0]) + '</div><div class="count-value">' + escapeHtml(row[1] || 0) + '</div></div>';
+            }).join(''),
+          '</div>',
+        '</section>'
+      ].join('');
+    }
+
+    function renderRecentRows(rows) {
+      return [
+        '<section class="section">',
+          '<h2 class="section-title">Recent Log Entries</h2>',
+          rows.length ? '<div class="entry-list">' + rows.map(renderEntry).join('') + '</div>' : '<p class="section-copy">No log entries found.</p>',
+        '</section>'
+      ].join('');
+    }
+
+    function renderEntry(row) {
+      return [
+        '<article class="entry-card">',
+          '<span class="entry-type">' + escapeHtml(row.eventType || 'Event') + '</span>',
+          '<p class="entry-key">' + escapeHtml(row.claimKey || 'No claim key') + '</p>',
+          '<p class="entry-time">' + escapeHtml(row.loggedAt || 'No timestamp') + '</p>',
+        '</article>'
+      ].join('');
+    }
+
+    function renderNotes() {
+      return [
+        '<section class="section">',
+          '<h2 class="section-title">Notes</h2>',
+          '<p class="section-copy">Diagnostics are for troubleshooting only. Baseline rows preserve the initial sheet state and are not counted in standard reports.</p>',
+        '</section>'
+      ].join('');
+    }
+
+    renderDiagnostics(diagnostics);
+  </script>
+</body>
+</html>

@@ -1,0 +1,963 @@
+<!--
+
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; padding: 10px; background: #f8f9fa; }
+    .card { background: white; padding: 10px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid #4285f4; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    button { width: 100%; padding: 8px; background: #4285f4; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    button:hover { background: #357abd; }
+    button:disabled { background: #b7c6e6; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <div id="list">Scanning...</div>
+  <br>
+  <span style="font-size:11px; color:#666; font-style:italic;">This list refreshes automatically every 5 seconds.</span>
+
+  <script>
+    function refresh() {
+      google.script.run.withSuccessHandler(render).getPendingClaims();
+    }
+
+    function openReview(button, row) {
+      button.disabled = true;
+      button.innerText = 'Opening...';
+
+      google.script.run
+        .withFailureHandler(() => {
+          button.disabled = false;
+          button.innerText = 'Open Review';
+        })
+        .showApprovalModal(row);
+    }
+
+    function render(claims) {
+      const list = document.getElementById('list');
+
+      if (claims.length === 0) {
+        list.innerHTML = "No pending reviews.";
+        return;
+      }
+
+      list.innerHTML = claims.map(c => `
+        <div class="card">
+          <strong>${c.rego}</strong><br><br>
+          <button onclick="openReview(this, ${c.row})">Open Review</button>
+        </div>
+      `).join('');
+    }
+
+    setInterval(refresh, 3500);
+    refresh();
+  </script>
+</body>
+</html>
+
+-->
+
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --bg: #eef3f8;
+      --panel-top: #f8fbff;
+      --panel-bottom: #ebf1f6;
+      --card: #ffffff;
+      --ink: #17212b;
+      --muted: #66758a;
+      --line: #d7e0ea;
+      --line-strong: #c8d4e2;
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --blue-soft: #dbeafe;
+      --violet: #7c3aed;
+      --violet-dark: #6d28d9;
+      --violet-soft: #ede9fe;
+      --amber: #b45309;
+      --amber-soft: #ffedd5;
+      --red: #b91c1c;
+      --red-soft: #fee2e2;
+      --slate-soft: #e2e8f0;
+      --shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      font-family: "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(37, 99, 235, 0.10), transparent 34%),
+        linear-gradient(180deg, var(--panel-top), var(--panel-bottom));
+      color: var(--ink);
+    }
+
+    body {
+      padding: 14px;
+    }
+
+    .shell {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .hero {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #e7eefb;
+      color: #315891;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .hero-title {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.1;
+      font-weight: 800;
+    }
+
+    .hero-copy {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 5px;
+      background: var(--blue);
+    }
+
+    .card-calendar::before {
+      background: var(--violet);
+    }
+
+    .card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.35;
+      font-weight: 800;
+      word-break: break-word;
+    }
+
+    .badge {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .badge-standard {
+      background: var(--blue-soft);
+      color: var(--blue-dark);
+    }
+
+    .badge-calendar {
+      background: var(--violet-soft);
+      color: var(--violet-dark);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .summary-tile {
+      position: relative;
+      overflow: hidden;
+      min-height: 46px;
+      padding: 7px 9px;
+      border-radius: 10px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .summary-tile::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: #94a3b8;
+    }
+
+    .summary-tile-critical::before {
+      background: var(--red);
+    }
+
+    .summary-tile-standard::before {
+      background: var(--blue);
+    }
+
+    .summary-tile-standard {
+      background: var(--blue-soft);
+      border-color: #93c5fd;
+    }
+
+    .summary-tile-standard .summary-value,
+    .summary-tile-standard .summary-label {
+      color: var(--blue-dark);
+    }
+
+    .summary-tile-critical {
+      background: var(--red-soft);
+      border-color: #fca5a5;
+    }
+
+    .summary-tile-warning::before {
+      background: var(--amber);
+    }
+
+    .summary-tile-warning {
+      background: var(--amber-soft);
+      border-color: #fdba74;
+    }
+
+    .summary-tile-calendar::before {
+      background: var(--violet);
+    }
+
+    .summary-tile-calendar {
+      background: var(--violet-soft);
+      border-color: #c4b5fd;
+    }
+
+    .summary-tile-total {
+      background: var(--slate-soft);
+      border-color: #cbd5e1;
+    }
+
+    .summary-value {
+      display: block;
+      color: var(--ink);
+      font-size: 17px;
+      line-height: 1;
+      font-weight: 850;
+    }
+
+    .summary-tile-critical .summary-value,
+    .summary-tile-critical .summary-label {
+      color: var(--red);
+    }
+
+    .summary-tile-warning .summary-value,
+    .summary-tile-warning .summary-label {
+      color: var(--amber);
+    }
+
+    .summary-tile-calendar .summary-value,
+    .summary-tile-calendar .summary-label {
+      color: var(--violet-dark);
+    }
+
+    .summary-label {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.15;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .card-subtitle {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .meta-strip {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .meta-pill {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      font-size: 12px;
+    }
+
+    .meta-label {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .meta-value {
+      color: var(--ink);
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .meta-pill-overdue,
+    .meta-pill-dueToday {
+      background: var(--red-soft);
+      border-color: #fecaca;
+    }
+
+    .meta-pill-overdue .meta-label,
+    .meta-pill-overdue .meta-value,
+    .meta-pill-dueToday .meta-label,
+    .meta-pill-dueToday .meta-value {
+      color: var(--red);
+    }
+
+    .meta-pill-warning {
+      background: var(--amber-soft);
+      border-color: #fed7aa;
+    }
+
+    .meta-pill-warning .meta-label,
+    .meta-pill-warning .meta-value {
+      color: var(--amber);
+    }
+
+    .meta-pill-muted {
+      background: var(--slate-soft);
+      border-color: #e2e8f0;
+    }
+
+    .meta-pill-muted .meta-label,
+    .meta-pill-muted .meta-value {
+      color: var(--muted);
+    }
+
+    .button {
+      width: 100%;
+      border: none;
+      border-radius: 13px;
+      padding: 11px 14px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      color: white;
+      background: linear-gradient(180deg, var(--blue), var(--blue-dark));
+      box-shadow: 0 10px 18px rgba(37, 99, 235, 0.22);
+    }
+
+    .button:hover {
+      filter: brightness(1.02);
+    }
+
+    .button:disabled {
+      background: #a9c1f7;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    .empty,
+    .loading {
+      padding: 18px 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px dashed var(--line-strong);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      box-shadow: var(--shadow);
+    }
+
+    .footer {
+      padding: 0 4px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      padding: 4px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .tab-btn:hover {
+      background: var(--blue-soft);
+      color: var(--blue-dark);
+    }
+
+    .tab-btn-active {
+      background: var(--blue);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    }
+
+    .tab-btn-active:hover {
+      background: var(--blue-dark);
+      color: #ffffff;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .panel-hidden {
+      display: none;
+    }
+
+    .summary-4 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .summary-tile-neutral::before {
+      background: #64748b;
+    }
+
+    .summary-tile-neutral {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+
+    .summary-tile-neutral .summary-value,
+    .summary-tile-neutral .summary-label {
+      color: #475569;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="tab-bar">
+      <button id="tab-btn-task" class="tab-btn tab-btn-active" onclick="switchTab('task')">Task Due Monitor</button>
+      <button id="tab-btn-review" class="tab-btn" onclick="switchTab('review')">Review Monitor</button>
+    </div>
+
+    <div id="panel-task" class="panel">
+      <section class="hero">
+        <div class="eyebrow">Legal Portal</div>
+        <h1 class="hero-title">Task Due Monitor</h1>
+        <p class="hero-copy">Track and manage your work.</p>
+      </section>
+
+      <div id="task-summary" class="summary-4" hidden></div>
+
+      <div id="task-list" class="loading">Scanning tasks...</div>
+
+      <div class="footer" id="task-footer">Counts update automatically.</div>
+    </div>
+
+    <div id="panel-review" class="panel panel-hidden">
+      <section class="hero">
+        <div class="eyebrow">Legal Portal</div>
+        <h1 class="hero-title">Review Monitor</h1>
+        <p class="hero-copy">Track pending standard and calendar reviews from the active sheet context.</p>
+      </section>
+
+      <div id="summary" class="summary" hidden></div>
+
+      <div id="list" class="loading">Scanning pending reviews...</div>
+
+      <div class="footer">This list refreshes automatically every few seconds.</div>
+    </div>
+  </div>
+
+  <script>
+    const REFRESH_INTERVAL_MS = 3500;
+
+    function refresh() {
+      google.script.run
+        .withSuccessHandler(render)
+        .withFailureHandler(renderError)
+        .getPendingReviewItems();
+    }
+
+    function openReview(button, reviewKey) {
+      button.disabled = true;
+      button.textContent = 'Opening...';
+
+      google.script.run
+        .withFailureHandler(function() {
+          button.disabled = false;
+          button.textContent = 'Open Review';
+        })
+        .showApprovalModal(reviewKey);
+    }
+
+    function render(result) {
+      const list = document.getElementById('list');
+      const summary = document.getElementById('summary');
+      list.className = 'list';
+      list.replaceChildren();
+      summary.hidden = true;
+      summary.replaceChildren();
+
+      const items = result && Array.isArray(result.items) ? result.items : [];
+      const emptyMessage = result && result.emptyMessage
+        ? result.emptyMessage
+        : 'No pending reviews.';
+
+      if (!items.length) {
+        list.className = 'empty';
+        list.textContent = emptyMessage;
+        return;
+      }
+
+      renderSummary(summary, items, result && result.summaryMode);
+      items.forEach(function(item) {
+        list.appendChild(buildCard(item, result && result.summaryMode));
+      });
+    }
+
+    function renderError(error) {
+      const list = document.getElementById('list');
+      const summary = document.getElementById('summary');
+      summary.hidden = true;
+      summary.replaceChildren();
+      list.className = 'empty';
+      list.textContent = 'Unable to load pending reviews right now.';
+      console.error(error);
+    }
+
+    function renderSummary(summary, items, summaryMode) {
+      if (summaryMode !== 'mixed' && summaryMode !== 'standard') {
+        summary.hidden = true;
+        summary.replaceChildren();
+        return;
+      }
+
+      const counts = getSummaryCounts(items);
+      const tiles = summaryMode === 'mixed'
+        ? [
+          buildSummaryTile('Standard', counts.standard, 'standard'),
+          buildSummaryTile('Calendar', counts.calendar, 'calendar')
+        ]
+        : [
+          buildSummaryTile('Due / Overdue', counts.dueOverdue, 'critical'),
+          buildSummaryTile('Due Soon', counts.dueSoon, 'warning')
+        ];
+
+      tiles.push(buildSummaryTile('Total', counts.total, 'total'));
+
+      summary.hidden = false;
+      summary.replaceChildren.apply(summary, tiles);
+    }
+
+    function getSummaryCounts(items) {
+      return items.reduce(function(counts, item) {
+        counts.total += 1;
+
+        if (item.type === 'calendar') {
+          counts.calendar += 1;
+          return counts;
+        }
+
+        if (item.type === 'standard') {
+          counts.standard += 1;
+        }
+
+        const dueState = item.dueStatus && item.dueStatus.state;
+        if (dueState === 'overdue' || dueState === 'dueToday') {
+          counts.dueOverdue += 1;
+        } else if (dueState === 'warning') {
+          counts.dueSoon += 1;
+        }
+
+        return counts;
+      }, {
+        standard: 0,
+        dueOverdue: 0,
+        dueSoon: 0,
+        calendar: 0,
+        total: 0
+      });
+    }
+
+    function buildSummaryTile(label, value, tone) {
+      const tile = document.createElement('div');
+      tile.className = 'summary-tile summary-tile-' + tone;
+
+      const valueNode = document.createElement('span');
+      valueNode.className = 'summary-value';
+      valueNode.textContent = value;
+      tile.appendChild(valueNode);
+
+      const labelNode = document.createElement('span');
+      labelNode.className = 'summary-label';
+      labelNode.textContent = label;
+      tile.appendChild(labelNode);
+
+      return tile;
+    }
+
+    function buildCard(item, summaryMode) {
+      const card = document.createElement('article');
+      card.className = getCardClassName(item);
+
+      const head = document.createElement('div');
+      head.className = 'card-head';
+
+      const title = document.createElement('h2');
+      title.className = 'card-title';
+      title.textContent = item.title || 'Untitled Review';
+      head.appendChild(title);
+
+      const badge = document.createElement('span');
+      badge.className = getBadgeClassName(item);
+      badge.textContent = getBadgeText(item);
+      head.appendChild(badge);
+
+      card.appendChild(head);
+
+      if (item.type === 'calendar') {
+        const subtitle = document.createElement('p');
+        subtitle.className = 'card-subtitle';
+        subtitle.textContent = item.subtitle || item.reviewStatus || '';
+        card.appendChild(subtitle);
+      }
+
+      const metaStrip = document.createElement('div');
+      metaStrip.className = 'meta-strip';
+      buildMetaRows(item, summaryMode).forEach(function(metaRow) {
+        metaStrip.appendChild(metaRow);
+      });
+      card.appendChild(metaStrip);
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'button';
+      button.textContent = 'Open Review';
+      button.addEventListener('click', function() {
+        openReview(button, item.reviewKey);
+      });
+      card.appendChild(button);
+
+      return card;
+    }
+
+    function buildMetaRows(item, summaryMode) {
+      if (item.type === 'calendar') {
+        return [
+          buildMetaPill('Events', getEventCountText(item)),
+          buildMetaPill('Status', item.reviewStatus || 'Awaiting Review')
+        ];
+      }
+
+      const dueState = summaryMode === 'standard' && item.dueStatus
+        ? item.dueStatus.state
+        : '';
+
+      return [
+        buildMetaPill('Due', getDueText(item), dueState),
+        buildMetaPill('Status', item.reviewStatus || 'Awaiting Review'),
+        buildMetaPill('Received', item.data && item.data.emailDateText ? item.data.emailDateText : 'Not provided')
+      ];
+    }
+
+    function buildMetaPill(label, value, state) {
+      const row = document.createElement('div');
+      row.className = 'meta-pill' + (state ? ' meta-pill-' + state : '');
+
+      const left = document.createElement('span');
+      left.className = 'meta-label';
+      left.textContent = label;
+      row.appendChild(left);
+
+      const right = document.createElement('span');
+      right.className = 'meta-value';
+      right.textContent = value;
+      row.appendChild(right);
+
+      return row;
+    }
+
+    function getCardClassName(item) {
+      const classes = ['card'];
+      if (item.type === 'calendar') {
+        classes.push('card-calendar');
+      }
+
+      return classes.join(' ');
+    }
+
+    function getBadgeClassName(item) {
+      const classes = ['badge'];
+      if (item.type === 'calendar') {
+        classes.push('badge-calendar');
+      } else {
+        classes.push('badge-standard');
+      }
+
+      return classes.join(' ');
+    }
+
+    function getBadgeText(item) {
+      if (item.type === 'calendar') {
+        return 'Calendar';
+      }
+
+      return 'Standard';
+    }
+
+    function getDueText(item) {
+      if (item.dueStatus && item.dueStatus.label) {
+        if (item.dueStatus.dateText && item.dueStatus.state !== 'muted') {
+          return item.dueStatus.label + ' - ' + item.dueStatus.dateText;
+        }
+
+        return item.dueStatus.label;
+      }
+
+      return 'No due date';
+    }
+
+    function getEventCountText(item) {
+      const events = item && item.data && Array.isArray(item.data.eventsToNote)
+        ? item.data.eventsToNote.length
+        : 0;
+
+      return events + ' event' + (events === 1 ? '' : 's') + ' to note';
+    }
+
+    setInterval(function() {
+      if (activeTab === 'review') {
+        refresh();
+      }
+    }, REFRESH_INTERVAL_MS);
+
+    // ── Tab switching ─────────────────────────────────────────────────────────
+
+    var activeTab = 'task';
+
+    function switchTab(tab) {
+      activeTab = tab;
+
+      document.getElementById('panel-review').className = tab === 'review' ? 'panel' : 'panel panel-hidden';
+      document.getElementById('panel-task').className = tab === 'task' ? 'panel' : 'panel panel-hidden';
+      document.getElementById('tab-btn-review').className = tab === 'review' ? 'tab-btn tab-btn-active' : 'tab-btn';
+      document.getElementById('tab-btn-task').className = tab === 'task' ? 'tab-btn tab-btn-active' : 'tab-btn';
+
+      if (tab === 'task') {
+        refreshTaskTab();
+      }
+    }
+
+    // ── Task Due Monitor ──────────────────────────────────────────────────────
+
+    function refreshTaskTab() {
+      google.script.run
+        .withSuccessHandler(renderTaskTab)
+        .withFailureHandler(renderTaskTabError)
+        .getTaskDueItems();
+    }
+
+    function renderTaskTab(result) {
+      var taskList = document.getElementById('task-list');
+      var taskSummary = document.getElementById('task-summary');
+      var taskFooter = document.getElementById('task-footer');
+
+      taskList.className = 'list';
+      taskList.replaceChildren();
+      taskSummary.hidden = true;
+      taskSummary.replaceChildren();
+
+      var items = result && Array.isArray(result.items) ? result.items : [];
+
+      if (result && result.lastUpdated) {
+        taskFooter.textContent = 'Counts update automatically. Last updated: ' + result.lastUpdated;
+      }
+
+      if (!items.length) {
+        taskList.className = 'empty';
+        taskList.textContent = 'No task due items found on this sheet.';
+        return;
+      }
+
+      renderTaskSummary(taskSummary, items);
+      items.forEach(function(item) {
+        taskList.appendChild(buildTaskCard(item));
+      });
+    }
+
+    function renderTaskTabError(error) {
+      var taskList = document.getElementById('task-list');
+      var taskSummary = document.getElementById('task-summary');
+      taskSummary.hidden = true;
+      taskSummary.replaceChildren();
+      taskList.className = 'empty';
+      taskList.textContent = 'Unable to load tasks right now.';
+      console.error(error);
+    }
+
+    function renderTaskSummary(container, items) {
+      var counts = getTaskSummaryCounts(items);
+      var tiles = [
+        buildSummaryTile('Overdue', counts.overdue, 'critical'),
+        buildSummaryTile('Due Soon (≤7 days)', counts.dueSoon, 'warning'),
+        buildSummaryTile('Not Yet Due', counts.notYetDue, 'neutral'),
+        buildSummaryTile('Total Records', counts.total, 'total')
+      ];
+
+      container.hidden = false;
+      container.replaceChildren.apply(container, tiles);
+    }
+
+    function getTaskSummaryCounts(items) {
+      return items.reduce(function(counts, item) {
+        counts.total += 1;
+
+        var state = item.dueStatus && item.dueStatus.state;
+        if (state === 'overdue' || state === 'dueToday') {
+          counts.overdue += 1;
+        } else if (state === 'warning') {
+          counts.dueSoon += 1;
+        } else {
+          counts.notYetDue += 1;
+        }
+
+        return counts;
+      }, { overdue: 0, dueSoon: 0, notYetDue: 0, total: 0 });
+    }
+
+    function buildTaskCard(item) {
+      var card = document.createElement('article');
+      card.className = 'card';
+
+      var head = document.createElement('div');
+      head.className = 'card-head';
+
+      var title = document.createElement('h2');
+      title.className = 'card-title';
+      title.textContent = item.title || 'Unknown';
+      head.appendChild(title);
+
+      card.appendChild(head);
+
+      var metaStrip = document.createElement('div');
+      metaStrip.className = 'meta-strip';
+
+      var dueState = item.dueStatus ? item.dueStatus.state : '';
+      var dueText = item.dueStatus && item.dueStatus.label
+        ? (item.dueStatus.dateText && dueState !== 'muted'
+            ? item.dueStatus.label + ' - ' + item.dueStatus.dateText
+            : item.dueStatus.label)
+        : 'No due date';
+
+      metaStrip.appendChild(buildMetaPill('Due', dueText, dueState));
+      metaStrip.appendChild(buildMetaPill('Status', item.status || 'Unknown'));
+      metaStrip.appendChild(buildMetaPill('Priority', item.priority || 'Unknown'));
+      card.appendChild(metaStrip);
+
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'button';
+      button.textContent = 'Open Row';
+      button.addEventListener('click', function() {
+        openTaskRow(button, item.taskKey);
+      });
+      card.appendChild(button);
+
+      return card;
+    }
+
+    function openTaskRow(button, taskKey) {
+      button.disabled = true;
+      button.textContent = 'Opening...';
+
+      google.script.run
+        .withSuccessHandler(function() {
+          button.disabled = false;
+          button.textContent = 'Open Row';
+        })
+        .withFailureHandler(function() {
+          button.disabled = false;
+          button.textContent = 'Open Row';
+        })
+        .navigateToTaskRow(taskKey.sheetName, taskKey.row);
+    }
+
+    setInterval(function() {
+      if (activeTab === 'task') {
+        refreshTaskTab();
+      }
+    }, REFRESH_INTERVAL_MS);
+
+    refreshTaskTab();
+  </script>
+</body>
+</html>

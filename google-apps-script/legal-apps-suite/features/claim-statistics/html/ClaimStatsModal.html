@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --bg: #eef3f8;
+      --panel: #ffffff;
+      --ink: #17212b;
+      --muted: #66758a;
+      --line: #d7e0ea;
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --blue-soft: #e8f0ff;
+      --green-soft: #e8f7ef;
+      --green: #047857;
+      --amber-soft: #fff4e5;
+      --amber: #b45309;
+      --red-soft: #fee2e2;
+      --red: #b91c1c;
+      --shadow: 0 12px 28px rgba(15, 23, 42, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(180deg, #f8fbff, var(--bg));
+      color: var(--ink);
+    }
+
+    body {
+      padding: 16px;
+    }
+
+    .modal-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .hero,
+    .section,
+    .controls,
+    .notice {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 18px;
+    }
+
+    .badge {
+      display: inline-flex;
+      margin-bottom: 8px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: var(--blue-dark);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .hero-title {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.15;
+      font-weight: 800;
+    }
+
+    .hero-subtitle,
+    .section-copy,
+    .claim-meta,
+    .metric-note {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .hero-subtitle {
+      margin: 6px 0 0;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .metric-card {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .metric-card-accent {
+      background: var(--green-soft);
+      border-color: #b7ead0;
+    }
+
+    .metric-card-warm {
+      background: var(--amber-soft);
+      border-color: #fed7aa;
+    }
+
+    .metric-card-danger {
+      background: var(--red-soft);
+      border-color: #fecaca;
+    }
+
+    .metric-label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .metric-value {
+      margin-top: 4px;
+      font-size: 26px;
+      line-height: 1;
+      font-weight: 800;
+    }
+
+    .metric-note {
+      margin-top: 4px;
+      font-size: 12px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+      padding: 14px;
+    }
+
+    .control-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .control-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    select,
+    input {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      color: var(--ink);
+      background: #fff;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    input:disabled {
+      background: #f1f5f9;
+      color: #94a3b8;
+    }
+
+    .btn {
+      min-height: 38px;
+      border: 0;
+      border-radius: 8px;
+      padding: 0 14px;
+      cursor: pointer;
+      color: #fff;
+      background: var(--blue);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .btn:hover {
+      background: var(--blue-dark);
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      background: #9db7f4;
+    }
+
+    .tabs {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .tab-list {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      border-bottom: 1px solid var(--line);
+      background: #f8fafc;
+    }
+
+    .tab-button {
+      min-height: 46px;
+      border: 0;
+      border-right: 1px solid var(--line);
+      padding: 8px;
+      cursor: pointer;
+      color: var(--muted);
+      background: transparent;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .tab-button:last-child {
+      border-right: 0;
+    }
+
+    .tab-button-active {
+      color: var(--blue-dark);
+      background: #fff;
+    }
+
+    .tab-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      margin-left: 6px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: var(--blue-dark);
+      font-size: 11px;
+    }
+
+    .tab-panel {
+      padding: 14px;
+    }
+
+    .section {
+      padding: 14px;
+      box-shadow: none;
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .detail-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+      font-size: 13px;
+    }
+
+    .detail-value {
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .claim-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .claim-card {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .claim-title {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .claim-meta {
+      margin: 5px 0 0;
+    }
+
+    .notice {
+      padding: 12px 14px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .notice-error {
+      border-color: #fecaca;
+      color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+  </style>
+</head>
+<body>
+  <script id="claim-stats-report-data" type="application/json"><?!= JSON.stringify(report) ?></script>
+  <div id="app" class="modal-panel"></div>
+
+  <script>
+    const PRESETS = [
+      ['today', 'Today'],
+      ['this_week', 'This Week'],
+      ['this_month', 'This Month'],
+      ['this_year', 'This Year'],
+      ['custom', 'Custom'],
+      ['all', 'All']
+    ];
+    const TAB_DEFS = [
+      { id: 'details', label: 'Report Details' },
+      { id: 'newClaims', label: 'New Claims' },
+      { id: 'liabilityConfirmed', label: 'Liability' },
+      { id: 'droppedCases', label: 'Dropped Cases' },
+      { id: 'samePeriodConfirmed', label: 'Same Period' }
+    ];
+    let report = readJson('claim-stats-report-data');
+    let activeTab = 'details';
+    let loading = false;
+    let errorMessage = '';
+
+    function readJson(id) {
+      const node = document.getElementById(id);
+      try {
+        return JSON.parse(node && node.textContent ? node.textContent : '{}');
+      } catch (error) {
+        return {};
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value === null || value === undefined ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function render() {
+      const app = document.getElementById('app');
+      app.innerHTML = [
+        renderHero(report),
+        renderControls(report),
+        loading ? '<div class="notice">Refreshing claim statistics...</div>' : '',
+        errorMessage ? '<div class="notice notice-error">' + escapeHtml(errorMessage) + '</div>' : '',
+        renderTabs(report),
+        '<div class="actions"><button class="btn" type="button" data-action="close">Close</button></div>'
+      ].join('');
+      bindEvents();
+    }
+
+    function renderHero(data) {
+      const totals = data.totals || {};
+      return [
+        '<section class="hero">',
+          '<span class="badge">' + escapeHtml(data.badge || 'Claim Statistics') + '</span>',
+          '<h1 class="hero-title">' + escapeHtml(data.title || 'Claim Statistics') + '</h1>',
+          '<p class="hero-subtitle">' + escapeHtml(data.subtitle || '') + '</p>',
+          '<div class="metric-grid">',
+            metricCard('New Claims Added', totals.newClaims, 'logged', ''),
+            metricCard('Liability Confirmed', totals.liabilityConfirmed, 'moved', 'metric-card-accent'),
+            metricCard('Dropped Cases', totals.droppedCases, 'dropped', 'metric-card-danger'),
+            metricCard('Same Period Confirmed', totals.samePeriodConfirmed, 'matched', 'metric-card-warm'),
+          '</div>',
+        '</section>'
+      ].join('');
+    }
+
+    function metricCard(label, value, note, toneClass) {
+      return [
+        '<div class="metric-card ' + toneClass + '">',
+          '<span class="metric-label">' + escapeHtml(label) + '</span>',
+          '<div class="metric-value">' + escapeHtml(value || 0) + '</div>',
+          '<div class="metric-note">' + escapeHtml(note) + '</div>',
+        '</div>'
+      ].join('');
+    }
+
+    function renderControls(data) {
+      const preset = data.preset || 'custom';
+      const isCustom = preset === 'custom';
+      return [
+        '<section class="controls">',
+          '<label class="control-field"><span class="control-label">Preset</span>',
+            '<select id="preset">' + PRESETS.map(function(item) {
+              return '<option value="' + item[0] + '"' + (item[0] === preset ? ' selected' : '') + '>' + item[1] + '</option>';
+            }).join('') + '</select>',
+          '</label>',
+          '<label class="control-field"><span class="control-label">From</span>',
+            '<input id="fromDate" type="date" value="' + escapeHtml(data.fromDateKey || '') + '"' + (isCustom ? '' : ' disabled') + '>',
+          '</label>',
+          '<label class="control-field"><span class="control-label">To</span>',
+            '<input id="toDate" type="date" value="' + escapeHtml(data.toDateKey || '') + '"' + (isCustom ? '' : ' disabled') + '>',
+          '</label>',
+          '<button class="btn" type="button" data-action="refresh"' + (loading ? ' disabled' : '') + '>' + (loading ? 'Refreshing' : 'Refresh') + '</button>',
+        '</section>'
+      ].join('');
+    }
+
+    function renderTabs(data) {
+      const sections = data.sections || {};
+      const tabButtons = TAB_DEFS.map(function(tab) {
+        const count = tab.id === 'details' ? null : getSection(tab.id).length;
+        return [
+          '<button class="tab-button ' + (activeTab === tab.id ? 'tab-button-active' : '') + '" type="button" data-tab="' + tab.id + '">',
+            escapeHtml(tab.label),
+            count === null ? '' : '<span class="tab-count">' + count + '</span>',
+          '</button>'
+        ].join('');
+      }).join('');
+      return [
+        '<section class="tabs">',
+          '<div class="tab-list">' + tabButtons + '</div>',
+          '<div class="tab-panel">' + renderActivePanel(data, sections) + '</div>',
+        '</section>'
+      ].join('');
+    }
+
+    function renderActivePanel(data) {
+      if (activeTab === 'details') {
+        return [
+          '<section class="section">',
+            '<h2 class="section-title">Report Details</h2>',
+            '<div class="detail-list">',
+              detailRow('Range', data.rangeLabel || 'Not provided'),
+              detailRow('Filter', data.filterLabel || 'Not provided'),
+              detailRow('Last scanned', data.lastScanned || 'Not provided'),
+            '</div>',
+          '</section>'
+        ].join('');
+      }
+      return renderClaimList(getSection(activeTab));
+    }
+
+    function detailRow(label, value) {
+      return '<div class="detail-row"><div>' + escapeHtml(label) + '</div><div class="detail-value">' + escapeHtml(value || '-') + '</div></div>';
+    }
+
+    function getSection(sectionId) {
+      const sections = report.sections || {};
+      return Array.isArray(sections[sectionId]) ? sections[sectionId] : [];
+    }
+
+    function renderClaimList(claims) {
+      if (!claims.length) {
+        return '<p class="section-copy">No claims were logged for this section.</p>';
+      }
+      return '<div class="claim-list">' + claims.map(function(claim) {
+        const title = [claim.claimNumber, claim.rego].filter(Boolean).join(' / ') || claim.claimKey || 'Claim';
+        const meta = [claim.clientName, claim.insurer].filter(Boolean).join(' - ') || 'No client or insurer recorded';
+        return [
+          '<article class="claim-card">',
+            '<h3 class="claim-title">' + escapeHtml(title) + '</h3>',
+            '<p class="claim-meta">' + escapeHtml(meta) + '</p>',
+            claim.loggedAt ? '<p class="claim-meta">Logged ' + escapeHtml(claim.loggedAt) + '</p>' : '',
+          '</article>'
+        ].join('');
+      }).join('') + '</div>';
+    }
+
+    function bindEvents() {
+      const preset = document.getElementById('preset');
+      if (preset) {
+        preset.addEventListener('change', handlePresetChange);
+      }
+      document.querySelectorAll('[data-action="refresh"]').forEach(function(button) {
+        button.addEventListener('click', refreshReport);
+      });
+      document.querySelectorAll('[data-action="close"]').forEach(function(button) {
+        button.addEventListener('click', function() {
+          google.script.host.close();
+        });
+      });
+      document.querySelectorAll('[data-tab]').forEach(function(button) {
+        button.addEventListener('click', function() {
+          activeTab = button.getAttribute('data-tab');
+          render();
+        });
+      });
+    }
+
+    function handlePresetChange(event) {
+      const value = event.target.value;
+      const defaults = report.rangeDefaults || {};
+      report.preset = value;
+      if (value !== 'custom') {
+        const range = defaults[value] || {};
+        report.fromDateKey = value === 'all' ? '' : (range.fromDateKey || report.fromDateKey || '');
+        report.toDateKey = value === 'all' ? '' : (range.toDateKey || report.toDateKey || '');
+      }
+      render();
+    }
+
+    function refreshReport() {
+      const preset = document.getElementById('preset').value;
+      const fromDate = preset === 'all' ? '' : document.getElementById('fromDate').value;
+      const toDate = preset === 'all' ? '' : document.getElementById('toDate').value;
+      loading = true;
+      errorMessage = '';
+      render();
+      google.script.run
+        .withSuccessHandler(function(nextReport) {
+          report = nextReport || {};
+          activeTab = 'details';
+          loading = false;
+          render();
+        })
+        .withFailureHandler(function(error) {
+          loading = false;
+          errorMessage = error && error.message ? error.message : String(error);
+          render();
+        })
+        .getClaimStatsReport(preset, fromDate, toDate);
+    }
+
+    render();
+  </script>
+</body>
+</html>

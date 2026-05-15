@@ -1,21 +1,14 @@
-function onOpen(e) {
-  onOpen_LegalPortal(e);
-
-  if (typeof onOpen_ClaimStatistics === 'function') {
-    onOpen_ClaimStatistics(e);
-  }
-}
-
 function onOpen_LegalPortal() {
   SpreadsheetApp.getUi()
     .createMenu('Legal Portal')
-    .addItem('Open Review Monitor', 'showSidebar')
+    .addItem('Open Monitor', 'showSidebar')
     .addToUi();
 }
 
 function showSidebar() {
-  const html = HtmlService.createHtmlOutputFromFile('SidebarUI')
-    .setTitle('Review Monitor');
+  const html = HtmlService.createTemplateFromFile('SidebarUI')
+      .evaluate()
+      .setTitle(' ');
   SpreadsheetApp.getUi().showSidebar(html);
 }
 
@@ -32,7 +25,7 @@ function showApprovalModal(reviewKey) {
   template.claim = reviewItem;
 
   const html = template.evaluate().setWidth(660).setHeight(760);
-  SpreadsheetApp.getUi().showModalDialog(html, '');
+  SpreadsheetApp.getUi().showModalDialog(html, ' ');
 }
 
 function approveReview(reviewKey, clientPayload) {
