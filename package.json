@@ -10,9 +10,7 @@
     "check": "node scripts/check-workflows.mjs",
     "deploy": "node scripts/deploy-workflow.mjs",
     "datatables": "node scripts/datatables.mjs",
-    "apps-script:build": "node scripts/build-apps-script.mjs",
-    "apps-script:status": "clasp status",
-    "apps-script:push": "npm run apps-script:build && clasp push --force"
+    "apps-script": "node scripts/apps-script.mjs"
   },
   "engines": {
     "node": ">=18"

@@ -1,0 +1,15 @@
+{
+  "defaultManifest": {
+    "timeZone": "Australia/Sydney",
+    "exceptionLogging": "STACKDRIVER",
+    "runtimeVersion": "V8"
+  },
+  "projects": [
+    {
+      "name": "legal-apps-suite",
+      "sourceRoot": "google-apps-script/legal-apps-suite",
+      "distDir": "google-apps-script/legal-apps-suite/dist",
+      "customBuild": "build-dist.mjs"
+    }
+  ]
+}

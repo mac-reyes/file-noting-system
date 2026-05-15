@@ -1,0 +1,16 @@
+{
+  "projects": {
+    "legal-apps-suite": {
+      "targets": {
+        "production": {
+          "scriptId": "LEGAL_APPS_SUITE_PRODUCTION_SCRIPT_ID",
+          "description": "Production legal apps suite"
+        },
+        "test": {
+          "scriptId": "LEGAL_APPS_SUITE_TEST_SCRIPT_ID",
+          "description": "Test legal apps suite"
+        }
+      }
+    }
+  }
+}
