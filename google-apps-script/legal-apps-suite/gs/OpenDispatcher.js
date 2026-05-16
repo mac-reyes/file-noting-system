@@ -44,3 +44,23 @@ function onOpen_Analytics() {
     menu.addToUi();
   }
 }
+
+function onOpen_DocumentGenerator() {
+  const ui = SpreadsheetApp.getUi();
+  const menu = ui.createMenu('Document Generator');
+  const subMenu = ui.createMenu('Generate document for the selected row');
+  let hasItems = false;
+
+  if (typeof addRecoveryDocumentGeneratorMenuItems_ === 'function') {
+    hasItems = addRecoveryDocumentGeneratorMenuItems_(subMenu) || hasItems;
+  }
+
+  if (typeof generateMoneyTalksSettlementRelease === 'function') {
+    subMenu.addItem('Settlement Release (Money Talks)', 'generateMoneyTalksSettlementRelease');
+    hasItems = true;
+  }
+
+  if (hasItems) {
+    menu.addSubMenu(subMenu).addToUi();
+  }
+}

@@ -2,13 +2,21 @@
   "projects": {
     "legal-apps-suite": {
       "targets": {
-        "production": {
-          "scriptId": "LEGAL_APPS_SUITE_PRODUCTION_SCRIPT_ID",
-          "description": "Production legal apps suite"
+        "recoveries_prod": {
+          "scriptId": "LEGAL_APPS_SUITE_RECOVERIES_PROD_SCRIPT_ID",
+          "description": "Recoveries production legal apps suite"
         },
-        "test": {
-          "scriptId": "LEGAL_APPS_SUITE_TEST_SCRIPT_ID",
-          "description": "Test legal apps suite"
+        "recoveries_test": {
+          "scriptId": "LEGAL_APPS_SUITE_RECOVERIES_TEST_SCRIPT_ID",
+          "description": "Recoveries test legal apps suite"
+        },
+        "money_talks_prod": {
+          "scriptId": "LEGAL_APPS_SUITE_MONEY_TALKS_PROD_SCRIPT_ID",
+          "description": "Money Talks production legal apps suite"
+        },
+        "money_talks_test": {
+          "scriptId": "LEGAL_APPS_SUITE_MONEY_TALKS_TEST_SCRIPT_ID",
+          "description": "Money Talks test legal apps suite"
         }
       }
     }

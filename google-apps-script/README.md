@@ -9,13 +9,14 @@ From the repo root:
 ```bash
 npm run apps-script -- list
 npm run apps-script -- build --project legal-apps-suite
-npm run apps-script -- build --project legal-apps-suite --features legal-portal
+npm run apps-script -- build --project legal-apps-suite --features recoveries/legal-portal
 npm run apps-script -- status --project legal-apps-suite
 npm run apps-script -- push --project legal-apps-suite
 ```
 
-Use `--features` only for local inspection/debug builds. Apps Script pushes replace
-the remote project contents, so deploys remain full-suite only.
+Use grouped `--features` names for selected builds and pushes. Apps Script pushes
+replace the remote project contents, so selected pushes deploy only the selected
+grouped modules plus root files.
 
 ## Local Script ID Targets
 
@@ -38,7 +39,7 @@ Real Apps Script IDs should stay local and untracked.
 4. Switch a project to a target:
 
    ```bash
-   npm run apps-script -- switch --project legal-apps-suite --target production
+   npm run apps-script -- switch --project legal-apps-suite --target recoveries_test
    ```
 
 The switch command writes the selected project's local `.clasp.json` with:
@@ -58,5 +59,5 @@ Then `status` and `push` use that selected Script ID.
 - `.clasp.json` is ignored by git.
 - The example target file contains placeholders only.
 - `push` always requires a selected project and an existing local `.clasp.json`.
-- `push` always runs a full build before `clasp push`.
-- Targeted `--features` builds are partial `dist` artifacts and are blocked for `push`.
+- `push` builds the requested full-suite or selected grouped feature scope before `clasp push`.
+- Targeted `--features` pushes replace the remote project with only those grouped features.
