@@ -7,6 +7,7 @@ const rootGsDir = path.join(sourceRoot, 'gs');
 const featuresDir = path.join(sourceRoot, 'features');
 const manifestPath = path.join(sourceRoot, 'appsscript.json');
 const selectedFeatures = parseSelectedFeatures(process.argv.slice(2));
+const copiedDistFiles = new Map();
 
 function parseSelectedFeatures(argv) {
   const selected = [];
@@ -65,8 +66,7 @@ async function copyJsAsGs(sourceDir) {
   for (const fileName of files) {
     const sourcePath = path.join(sourceDir, fileName);
     const targetPath = path.join(distDir, fileName.replace(/\.js$/, '.gs'));
-    await copyFile(sourcePath, targetPath);
-    logCopy(sourcePath, targetPath);
+    await copyDistFile(sourcePath, targetPath);
   }
 }
 
@@ -84,8 +84,7 @@ async function copyHtml(sourceDir) {
   for (const fileName of files) {
     const sourcePath = path.join(sourceDir, fileName);
     const targetPath = path.join(distDir, fileName);
-    await copyFile(sourcePath, targetPath);
-    logCopy(sourcePath, targetPath);
+    await copyDistFile(sourcePath, targetPath);
   }
 }
 
@@ -96,10 +95,23 @@ async function buildFeature(featureName) {
 }
 
 async function listAvailableFeatures() {
-  return (await readdir(featuresDir, { withFileTypes: true }))
+  const groups = (await readdir(featuresDir, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
+
+  const features = [];
+  for (const groupName of groups) {
+    const groupDir = path.join(featuresDir, groupName);
+    const groupFeatures = (await readdir(groupDir, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => groupName + '/' + entry.name)
+      .sort();
+
+    features.push(...groupFeatures);
+  }
+
+  return features;
 }
 
 function resolveFeatures(availableFeatures) {
@@ -124,11 +136,29 @@ function logCopy(sourcePath, targetPath) {
   console.log('copied ' + path.relative(sourceRoot, sourcePath) + ' -> ' + path.relative(sourceRoot, targetPath));
 }
 
+async function copyDistFile(sourcePath, targetPath) {
+  const distName = path.basename(targetPath);
+  const previousSource = copiedDistFiles.get(distName);
+  if (previousSource) {
+    throw new Error(
+      'Duplicate dist output "' + distName + '" from ' +
+      path.relative(sourceRoot, previousSource) + ' and ' +
+      path.relative(sourceRoot, sourcePath) + '. Rename one source file before building.'
+    );
+  }
+
+  copiedDistFiles.set(distName, sourcePath);
+  await copyFile(sourcePath, targetPath);
+  logCopy(sourcePath, targetPath);
+}
+
 async function main() {
   const features = resolveFeatures(await listAvailableFeatures());
 
   await rm(distDir, { recursive: true, force: true });
   await mkdir(distDir, { recursive: true });
+
+  copiedDistFiles.clear();
 
   await copyJsAsGs(rootGsDir);
 
@@ -136,8 +166,7 @@ async function main() {
     await buildFeature(featureName);
   }
 
-  await copyFile(manifestPath, path.join(distDir, 'appsscript.json'));
-  logCopy(manifestPath, path.join(distDir, 'appsscript.json'));
+  await copyDistFile(manifestPath, path.join(distDir, 'appsscript.json'));
 }
 
 main().catch((error) => {
