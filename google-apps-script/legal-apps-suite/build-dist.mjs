@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readdir, rm, stat } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const sourceRoot = process.cwd();
@@ -6,8 +6,18 @@ const distDir = path.join(sourceRoot, 'dist');
 const rootGsDir = path.join(sourceRoot, 'gs');
 const featuresDir = path.join(sourceRoot, 'features');
 const manifestPath = path.join(sourceRoot, 'appsscript.json');
+const idsLocalPath = path.join(sourceRoot, 'config.ids.local.json');
+const idsExamplePath = path.join(sourceRoot, 'config.ids.example.json');
 const selectedFeatures = parseSelectedFeatures(process.argv.slice(2));
 const copiedDistFiles = new Map();
+
+// Each ID config key only ships in builds that include its owning feature, so
+// a recoveries project never receives money-talks IDs (and vice versa).
+const CONFIG_KEY_TO_FEATURE = {
+  RECOVERY_DOCUMENT_TEMPLATES: 'recoveries/recovery-document-generator',
+  REPAIRER_MAP: 'recoveries/repairer-sync',
+  MONEY_TALKS_SETTLEMENT_RELEASE_TEMPLATE_ID: 'money-talks/settlement-release-generator'
+};
 
 function parseSelectedFeatures(argv) {
   const selected = [];
@@ -152,6 +162,89 @@ async function copyDistFile(sourcePath, targetPath) {
   logCopy(sourcePath, targetPath);
 }
 
+async function writeDistFile(targetPath, content, originLabel) {
+  const distName = path.basename(targetPath);
+  const previousSource = copiedDistFiles.get(distName);
+  if (previousSource) {
+    throw new Error(
+      'Duplicate dist output "' + distName + '" from ' +
+      path.relative(sourceRoot, previousSource) + ' and ' + originLabel +
+      '. Rename one source file before building.'
+    );
+  }
+
+  copiedDistFiles.set(distName, originLabel);
+  await writeFile(targetPath, content);
+  console.log('generated ' + originLabel + ' -> ' + path.relative(sourceRoot, targetPath));
+}
+
+async function readIdsConfig() {
+  if (await pathExists(idsLocalPath)) {
+    return { source: idsLocalPath, data: JSON.parse(await readFile(idsLocalPath, 'utf8')) };
+  }
+
+  if (await pathExists(idsExamplePath)) {
+    console.warn(
+      'WARNING: config.ids.local.json not found. Falling back to config.ids.example.json ' +
+      '(placeholder IDs). The generated Setup.gs will NOT contain real IDs.'
+    );
+    return { source: idsExamplePath, data: JSON.parse(await readFile(idsExamplePath, 'utf8')) };
+  }
+
+  console.warn(
+    'WARNING: neither config.ids.local.json nor config.ids.example.json found. ' +
+    'Skipping Setup.gs generation.'
+  );
+  return null;
+}
+
+async function generateSetupFile(features) {
+  const config = await readIdsConfig();
+  if (!config) {
+    return;
+  }
+
+  const featureSet = new Set(features);
+  const lines = [];
+  for (const [key, owningFeature] of Object.entries(CONFIG_KEY_TO_FEATURE)) {
+    if (!featureSet.has(owningFeature)) {
+      continue;
+    }
+    if (!(key in config.data)) {
+      console.warn('WARNING: ' + path.basename(config.source) + ' is missing key "' + key + '".');
+      continue;
+    }
+
+    const value = config.data[key];
+    const propValue = typeof value === 'string' ? value : JSON.stringify(value);
+    lines.push('    ' + JSON.stringify(key) + ': ' + JSON.stringify(propValue));
+  }
+
+  if (lines.length === 0) {
+    console.log('No in-scope ID config for selected features; skipping Setup.gs.');
+    return;
+  }
+
+  const content =
+    '/**\n' +
+    ' * GENERATED FILE — do not edit. Produced by build-dist.mjs from\n' +
+    ' * config.ids.local.json. Run setupLegalAppsSuiteScriptProperties() once\n' +
+    ' * per Apps Script project to populate Script Properties.\n' +
+    ' */\n\n' +
+    'function setupLegalAppsSuiteScriptProperties() {\n' +
+    '  var props = {\n' +
+    lines.join(',\n') + '\n' +
+    '  };\n' +
+    '  PropertiesService.getScriptProperties().setProperties(props, false);\n' +
+    '}\n';
+
+  await writeDistFile(
+    path.join(distDir, 'Setup.gs'),
+    content,
+    'Setup.gs (from ' + path.basename(config.source) + ')'
+  );
+}
+
 async function main() {
   const features = resolveFeatures(await listAvailableFeatures());
 
@@ -165,6 +258,8 @@ async function main() {
   for (const featureName of features) {
     await buildFeature(featureName);
   }
+
+  await generateSetupFile(features);
 
   await copyDistFile(manifestPath, path.join(distDir, 'appsscript.json'));
 }

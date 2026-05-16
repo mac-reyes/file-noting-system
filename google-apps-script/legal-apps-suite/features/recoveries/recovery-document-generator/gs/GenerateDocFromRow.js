@@ -17,55 +17,23 @@ const DOCUMENT_TYPES = {
   WRIT_FOR_PROPERTY: 'WRIT_FOR_PROPERTY'
 };
 
-const DOCUMENT_TEMPLATES = {
-  [DOCUMENT_TYPES.NOTICE_TO_SUE]: {
-    templateId: 'REDACTED_DRIVE_ID',
-    docTitle: 'Notice to Sue -'
-  },
-  [DOCUMENT_TYPES.LETTER_OF_INSTRUCTIONS]: {
-    templateId: 'REDACTED_DRIVE_ID',
-    docTitle: 'Letters to Instructions -'
-  },
-  [DOCUMENT_TYPES.LETTER_OF_DEMAND_TO_TP_DIRECT]: {
-    templateId: 'REDACTED_DRIVE_ID',
-    docTitle: 'Letter of Demand to TP Direct -'
-  },
-  [DOCUMENT_TYPES.LETTER_OF_DEMAND_TO_INSURANCE]: {
-    templateId: 'REDACTED_DRIVE_ID',
-    docTitle: 'Letter of Demand to Insurance -'
-  },
-  [DOCUMENT_TYPES.LETTER_OF_DEMAND_TO_INSURANCE_SUNCORP_AND_BUDGET_DIRECT]: {
-    templateId: 'REDACTED_DRIVE_ID',
-    docTitle: 'Letter of Demand to Insurance (Suncorp and Budget Direct) -'
-  },
-  [DOCUMENT_TYPES.SOC]: {
-    templateId: 'REDACTED_DRIVE_ID',
-    docTitle: 'SOC -'
-  },
-  [DOCUMENT_TYPES.SOC_VICARIOUS_LIABILITY]: {
-    templateId: 'REDACTED_DRIVE_ID',
-    docTitle: 'SOC - Vicarious Liability -'
-  },
-  [DOCUMENT_TYPES.BULLOCK_SANDERSON_SOC]: {
-    templateId: 'REDACTED_DRIVE_ID',
-    docTitle: 'Bullock Sanderson SOC -'
-  },
-  [DOCUMENT_TYPES.DJ]: {
-    templateId: 'REDACTED_DRIVE_ID',
-    docTitle: 'DJ -'
-  },
-  [DOCUMENT_TYPES.EXAMINATION_NOTICE]: {
-    templateId: 'REDACTED_DRIVE_ID',
-    docTitle: 'Examination Notice -'
-  },
-  [DOCUMENT_TYPES.AOS_EXAMINATION_NOTICE]: {
-    templateId: 'REDACTED_DRIVE_ID',
-    docTitle: 'AOS - Examination Notice -'
-  },
-  [DOCUMENT_TYPES.WRIT_FOR_PROPERTY]: {
-    templateId: 'REDACTED_DRIVE_ID',
-    docTitle: 'Writ for Property -'
-  }
+// Template IDs are not stored here. They live in Script Properties (see
+// ConfigProperties.js / getRecoveryDocumentTemplates_). Only the
+// human-readable title prefixes are kept in source.
+const DOCUMENT_TITLES = {
+  [DOCUMENT_TYPES.NOTICE_TO_SUE]: 'Notice to Sue -',
+  [DOCUMENT_TYPES.LETTER_OF_INSTRUCTIONS]: 'Letters to Instructions -',
+  [DOCUMENT_TYPES.LETTER_OF_DEMAND_TO_TP_DIRECT]: 'Letter of Demand to TP Direct -',
+  [DOCUMENT_TYPES.LETTER_OF_DEMAND_TO_INSURANCE]: 'Letter of Demand to Insurance -',
+  [DOCUMENT_TYPES.LETTER_OF_DEMAND_TO_INSURANCE_SUNCORP_AND_BUDGET_DIRECT]:
+    'Letter of Demand to Insurance (Suncorp and Budget Direct) -',
+  [DOCUMENT_TYPES.SOC]: 'SOC -',
+  [DOCUMENT_TYPES.SOC_VICARIOUS_LIABILITY]: 'SOC - Vicarious Liability -',
+  [DOCUMENT_TYPES.BULLOCK_SANDERSON_SOC]: 'Bullock Sanderson SOC -',
+  [DOCUMENT_TYPES.DJ]: 'DJ -',
+  [DOCUMENT_TYPES.EXAMINATION_NOTICE]: 'Examination Notice -',
+  [DOCUMENT_TYPES.AOS_EXAMINATION_NOTICE]: 'AOS - Examination Notice -',
+  [DOCUMENT_TYPES.WRIT_FOR_PROPERTY]: 'Writ for Property -'
 };
 
 const COLUMNS = {
@@ -164,12 +132,15 @@ function generateWritForProperty() {
  */
 
 function generateDocument(docType) {
-  const config = DOCUMENT_TEMPLATES[docType];
-  if (!config) {
+  const docTitle = DOCUMENT_TITLES[docType];
+  if (!docTitle) {
     throw new Error(`Unknown document type: ${docType}`);
   }
 
-  const { templateId, docTitle } = config;
+  const templateId = getRecoveryDocumentTemplates_()[docType];
+  if (!templateId) {
+    throw new Error(`No template ID configured for document type: ${docType}`);
+  }
   const rowData = getSelectedRowData();
   if (!rowData) return;
 

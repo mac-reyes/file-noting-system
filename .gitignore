@@ -17,6 +17,7 @@ credentials/**
 workflows/**/local.json
 .clasp.json
 google-apps-script/apps-script.targets.local.json
+google-apps-script/legal-apps-suite/config.ids.local.json
 
 # Raw cloud exports may contain sensitive credential names, IDs, URLs, headers,
 # payload samples, or other private workflow data.

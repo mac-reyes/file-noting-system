@@ -2,7 +2,8 @@
  * Money Talks settlement release document generator.
  */
 
-const MONEY_TALKS_SETTLEMENT_RELEASE_TEMPLATE_ID = 'REDACTED_DRIVE_ID';
+// Template ID comes from Script Properties (see ConfigProperties.js /
+// getMoneyTalksSettlementReleaseTemplateId_).
 
 const MONEY_TALKS_SETTLEMENT_RELEASE_COLUMNS = {
   column_c: 'C', // Authoriser / Repairer
@@ -52,7 +53,7 @@ function generateMoneyTalksSettlementRelease() {
   const description = rowData[moneyTalksColumnLetterToIndex_(columns.column_h)];
   const docTitle = 'Settlement Release - ' + rego + ' (' + gstStatus + ' GST) ' + description;
 
-  const copy = DriveApp.getFileById(MONEY_TALKS_SETTLEMENT_RELEASE_TEMPLATE_ID).makeCopy(docTitle);
+  const copy = DriveApp.getFileById(getMoneyTalksSettlementReleaseTemplateId_()).makeCopy(docTitle);
   const doc = DocumentApp.openById(copy.getId());
   const body = doc.getBody();
 
