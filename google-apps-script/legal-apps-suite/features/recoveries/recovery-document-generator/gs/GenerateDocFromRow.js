@@ -47,7 +47,7 @@ const DOCUMENT_TEMPLATES = {
     docTitle: 'SOC - Vicarious Liability -'
   },
   [DOCUMENT_TYPES.BULLOCK_SANDERSON_SOC]: {
-    templateId: 'REDACTED_DRIVE_ID`',
+    templateId: 'REDACTED_DRIVE_ID',
     docTitle: 'Bullock Sanderson SOC -'
   },
   [DOCUMENT_TYPES.DJ]: {
@@ -84,12 +84,8 @@ const COLUMNS = {
  * UI Helpers
  */
 
-function onOpen_DocumentGenerator() {
-  const ui = SpreadsheetApp.getUi();
-  const menu = ui.createMenu('Document Generator');
-
-  const subMenu = ui
-    .createMenu('Generate document for the selected row')
+function addRecoveryDocumentGeneratorMenuItems_(subMenu) {
+  subMenu
     .addItem('Letter of Instructions', 'generateLetterOfInstructions')
     .addItem('Notice to Sue', 'generateNoticeToSue')
     .addItem('Letter of Demand to TP Direct', 'generateLetterOfDemandToTPDirect')
@@ -103,7 +99,7 @@ function onOpen_DocumentGenerator() {
     .addItem('Examination Notice', 'generateExaminationNotice')
     .addItem('Writ for Property', 'generateWritForProperty');
 
-  menu.addSubMenu(subMenu).addToUi();
+  return true;
 }
 
 function showSuccessAlert(title, url) {
