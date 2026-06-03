@@ -9,7 +9,6 @@ const CLAIM_STATS_CONFIG = {
     liabilityConfirmed: 'LIABILITY CONFIRMED'
   },
   headers: {
-    claimNumber: 'CLAIM NUMBER',
     rego: 'REGO',
     clientName: 'CLIENT NAME',
     insurer: 'INSURER'
@@ -22,7 +21,6 @@ const CLAIM_STATS_CONFIG = {
     'WEEK KEY SYDNEY',
     'MONTH KEY SYDNEY',
     'CLAIM KEY',
-    'CLAIM NUMBER',
     'REGO',
     'CLIENT NAME',
     'INSURER',
@@ -42,6 +40,7 @@ const CLAIM_STATS_CONFIG = {
 
 function showClaimStatsDiagnostics() {
   try {
+    ensureClaimStatsAutoRefresh_();
     const result = refreshClaimStatsLog_();
     const diagnostics = buildClaimStatsDiagnosticsReport_(result.loggedAt);
     const template = HtmlService.createTemplateFromFile('ClaimStatsDiagnosticsModal');
@@ -60,6 +59,7 @@ function showClaimStatsDiagnostics() {
 
 function showClaimStatsModal() {
   try {
+    ensureClaimStatsAutoRefresh_();
     const report = getClaimStatsReport('custom', '', '');
     const template = HtmlService.createTemplateFromFile('ClaimStatsModal');
     template.report = report;
@@ -78,6 +78,117 @@ function showClaimStatsModal() {
 function getClaimStatsReport(preset, fromDateKey, toDateKey) {
   const result = refreshClaimStatsLog_();
   return buildClaimStatsReport_(preset || 'custom', result.loggedAt, fromDateKey || '', toDateKey || '');
+}
+
+const CLAIM_STATS_REFRESH_HANDLER = 'runClaimStatsAutoRefresh';
+const CLAIM_STATS_REFRESH_INTERVAL_MINUTES = 30;
+const CLAIM_STATS_REFRESH_STARTED_AT_KEY = 'CLAIM_STATS_AUTO_REFRESH_STARTED_AT';
+
+/**
+ * Installs the time-based auto-refresh trigger (every 30 minutes) if one is not
+ * already present, and records when it started. Called automatically when the
+ * modal/diagnostics open, so the trigger self-installs on first use with no
+ * manual step. Best-effort: any failure (e.g. scope not yet authorized) is
+ * logged and ignored so it never blocks opening the modal.
+ */
+function ensureClaimStatsAutoRefresh_() {
+  try {
+    if (hasClaimStatsAutoRefreshTrigger_()) {
+      return;
+    }
+
+    ScriptApp.newTrigger(CLAIM_STATS_REFRESH_HANDLER)
+      .timeBased()
+      .everyMinutes(CLAIM_STATS_REFRESH_INTERVAL_MINUTES)
+      .create();
+
+    // The trigger was just (re)created, so stamp the start time. This only runs
+    // when no trigger existed, so an already-running timer is never reset.
+    PropertiesService.getScriptProperties()
+      .setProperty(CLAIM_STATS_REFRESH_STARTED_AT_KEY, String(Date.now()));
+  } catch (error) {
+    Logger.log('Could not ensure claim stats auto-refresh trigger: %s', error && error.message ? error.message : error);
+  }
+}
+
+function hasClaimStatsAutoRefreshTrigger_() {
+  return ScriptApp.getProjectTriggers().some(function(trigger) {
+    return trigger.getHandlerFunction() === CLAIM_STATS_REFRESH_HANDLER;
+  });
+}
+
+/**
+ * Returns the auto-refresh trigger status for display in the modal: whether it
+ * is active, when it started, and a human-readable "running for" duration.
+ * Best-effort: if triggers cannot be read, returns an inactive status rather
+ * than throwing so the report still renders.
+ */
+function getClaimStatsAutoRefreshStatus_() {
+  const status = {
+    active: false,
+    intervalMinutes: CLAIM_STATS_REFRESH_INTERVAL_MINUTES,
+    startedAtDisplay: '',
+    runningForText: ''
+  };
+
+  let active = false;
+  try {
+    active = hasClaimStatsAutoRefreshTrigger_();
+  } catch (error) {
+    Logger.log('Could not read project triggers for status: %s', error && error.message ? error.message : error);
+    return status;
+  }
+
+  status.active = active;
+  if (!active) {
+    return status;
+  }
+
+  const startedAtRaw = PropertiesService.getScriptProperties().getProperty(CLAIM_STATS_REFRESH_STARTED_AT_KEY);
+  const startedAtMs = Number(startedAtRaw);
+  if (startedAtRaw && !isNaN(startedAtMs)) {
+    status.startedAtDisplay = Utilities.formatDate(new Date(startedAtMs), CLAIM_STATS_CONFIG.timezone, 'yyyy-MM-dd HH:mm');
+    status.runningForText = formatClaimStatsDuration_(Date.now() - startedAtMs);
+  }
+
+  return status;
+}
+
+function formatClaimStatsDuration_(milliseconds) {
+  if (!milliseconds || milliseconds < 0) {
+    return 'less than a minute';
+  }
+
+  const totalMinutes = Math.floor(milliseconds / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  const parts = [];
+
+  if (days) {
+    parts.push(days + (days === 1 ? ' day' : ' days'));
+  }
+  if (hours) {
+    parts.push(hours + (hours === 1 ? ' hour' : ' hours'));
+  }
+  if (minutes || !parts.length) {
+    parts.push(minutes + (minutes === 1 ? ' minute' : ' minutes'));
+  }
+
+  return parts.join(' ');
+}
+
+/**
+ * Time-based trigger handler. Runs the same scan as opening the modal, appending
+ * any newly observed claim events to the log. Errors are logged rather than
+ * thrown so a transient failure does not generate owner failure notifications.
+ */
+function runClaimStatsAutoRefresh() {
+  try {
+    refreshClaimStatsLog_();
+  } catch (error) {
+    Logger.log('Claim stats auto-refresh failed: %s', error && error.stack ? error.stack : error);
+  }
 }
 
 function refreshClaimStatsLog_() {
@@ -214,7 +325,6 @@ function getClaimStatsHeaderIndexes_(headerRow) {
   });
 
   return {
-    claimNumber: getClaimStatsHeaderIndex_(normalizedHeaders, CLAIM_STATS_CONFIG.headers.claimNumber),
     rego: getClaimStatsHeaderIndex_(normalizedHeaders, CLAIM_STATS_CONFIG.headers.rego),
     clientName: getClaimStatsHeaderIndex_(normalizedHeaders, CLAIM_STATS_CONFIG.headers.clientName),
     insurer: getClaimStatsHeaderIndex_(normalizedHeaders, CLAIM_STATS_CONFIG.headers.insurer)
@@ -288,9 +398,8 @@ function extractClaimStatsRows_(values, sheetName, section, headerIndexes) {
       continue;
     }
 
-    const claimNumber = claimStatsString_(rowValues[headerIndexes.claimNumber]).trim();
     const rego = claimStatsString_(rowValues[headerIndexes.rego]).trim();
-    const claimKey = buildClaimStatsKey_(claimNumber, rego);
+    const claimKey = buildClaimStatsKey_(rego);
 
     if (!claimKey) {
       continue;
@@ -299,7 +408,6 @@ function extractClaimStatsRows_(values, sheetName, section, headerIndexes) {
     if (!rowsByClaimKey[claimKey]) {
       rowsByClaimKey[claimKey] = {
         claimKey: claimKey,
-        claimNumber: claimNumber,
         rego: rego,
         clientName: claimStatsString_(rowValues[headerIndexes.clientName]).trim(),
         insurer: claimStatsString_(rowValues[headerIndexes.insurer]).trim(),
@@ -321,15 +429,14 @@ function isClaimStatsBlankRow_(rowValues) {
   });
 }
 
-function buildClaimStatsKey_(claimNumber, rego) {
-  const normalizedClaimNumber = normalizeClaimStatsKeyPart_(claimNumber);
+function buildClaimStatsKey_(rego) {
   const normalizedRego = normalizeClaimStatsKeyPart_(rego);
 
-  if (!normalizedClaimNumber || !normalizedRego) {
+  if (!normalizedRego) {
     return '';
   }
 
-  return normalizedClaimNumber + '|' + normalizedRego;
+  return normalizedRego;
 }
 
 function normalizeClaimStatsKeyPart_(value) {
@@ -418,7 +525,6 @@ function appendClaimStatsBaselineRows_(logSheet, snapshot, dateKeys) {
   if (!rows.length) {
     rows.push(buildClaimStatsLogRow_(CLAIM_STATS_CONFIG.eventTypes.baselineNewClaim, {
       claimKey: '__BASELINE__',
-      claimNumber: '',
       rego: '',
       clientName: 'Baseline initialized with no claim rows',
       insurer: '',
@@ -460,7 +566,6 @@ function appendClaimStatsDroppedBaselineRows_(logSheet, snapshot, dateKeys) {
   if (!rows.length) {
     rows.push(buildClaimStatsLogRow_(CLAIM_STATS_CONFIG.eventTypes.baselineDroppedCase, {
       claimKey: '__BASELINE__',
-      claimNumber: '',
       rego: '',
       clientName: 'Baseline initialized with no dropped case rows',
       insurer: '',
@@ -512,7 +617,6 @@ function buildClaimStatsLogRow_(eventType, claim, dateKeys) {
     dateKeys.weekKey,
     dateKeys.monthKey,
     claim.claimKey,
-    claim.claimNumber,
     claim.rego,
     claim.clientName,
     claim.insurer,
@@ -551,6 +655,7 @@ function buildClaimStatsReport_(preset, now, fromDateKey, toDateKey) {
       ? 'All non-baseline events'
       : 'DATE KEY SYDNEY between ' + rangeConfig.fromDateKey + ' and ' + rangeConfig.toDateKey,
     lastScanned: dateKeys.loggedAtDisplay,
+    autoRefresh: getClaimStatsAutoRefreshStatus_(),
     totals: {
       newClaims: newClaims.length,
       liabilityConfirmed: liabilityConfirmed.length,
@@ -781,7 +886,6 @@ function groupClaimStatsReportRows_(rows) {
 function buildClaimStatsReportClaim_(rowValues) {
   return {
     claimKey: claimStatsString_(rowValues[getClaimStatsLogColumnIndex_('CLAIM KEY')]),
-    claimNumber: claimStatsString_(rowValues[getClaimStatsLogColumnIndex_('CLAIM NUMBER')]),
     rego: claimStatsString_(rowValues[getClaimStatsLogColumnIndex_('REGO')]),
     clientName: claimStatsString_(rowValues[getClaimStatsLogColumnIndex_('CLIENT NAME')]),
     insurer: claimStatsString_(rowValues[getClaimStatsLogColumnIndex_('INSURER')]),
