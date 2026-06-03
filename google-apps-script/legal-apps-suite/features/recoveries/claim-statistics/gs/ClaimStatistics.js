@@ -4,10 +4,17 @@ const CLAIM_STATS_CONFIG = {
   droppedCasesSheetName: 'Dropped Cases',
   droppedCasesSection: 'DROPPED CASES',
   timezone: 'Australia/Sydney',
-  sectionLabels: {
-    newClaims: 'NEW CLAIMS',
-    liabilityConfirmed: 'LIABILITY CONFIRMED'
+  // A section banner is matched when a cell within the first few columns of a
+  // row starts with one of these prefixes (compared case-insensitively, after
+  // collapsing whitespace and non-breaking spaces). New claims may be split
+  // across multiple banners (e.g. "NEW CLAIMS VIA MANUAL INPUT" and
+  // "NEW CLAIMS VIA DIGITAL CLAIM FORM"); records under any of them are counted
+  // as new claims.
+  bannerPrefixes: {
+    newClaims: ['NEW CLAIM'],
+    liabilityConfirmed: ['LIABILITY CONFIRMED']
   },
+  bannerScanColumns: 3,
   headers: {
     rego: 'REGO',
     clientName: 'CLIENT NAME',
@@ -285,10 +292,26 @@ function scanClaimStatsSections_(spreadsheet) {
   const sections = findClaimStatsSections_(values);
 
   return {
-    newClaims: extractClaimStatsRows_(values, sheet.getName(), sections.newClaims, headerIndexes),
+    newClaims: extractClaimStatsRowsFromSections_(values, sheet.getName(), sections.newClaims, headerIndexes),
     liabilityConfirmed: extractClaimStatsRows_(values, sheet.getName(), sections.liabilityConfirmed, headerIndexes),
     droppedCases: scanClaimStatsDroppedRows_(spreadsheet, headerIndexes)
   };
+}
+
+function extractClaimStatsRowsFromSections_(values, sheetName, sections, headerIndexes) {
+  const rowsByClaimKey = {};
+
+  (sections || []).forEach(function(section) {
+    extractClaimStatsRows_(values, sheetName, section, headerIndexes).forEach(function(claim) {
+      if (!rowsByClaimKey[claim.claimKey]) {
+        rowsByClaimKey[claim.claimKey] = claim;
+      }
+    });
+  });
+
+  return Object.keys(rowsByClaimKey).sort().map(function(claimKey) {
+    return rowsByClaimKey[claimKey];
+  });
 }
 
 function scanClaimStatsDroppedRows_(spreadsheet, headerIndexes) {
@@ -341,52 +364,108 @@ function getClaimStatsHeaderIndex_(normalizedHeaders, headerName) {
 }
 
 function findClaimStatsSections_(values) {
-  const newClaimRows = [];
-  const liabilityConfirmedRows = [];
+  const banners = [];
 
   values.forEach(function(rowValues, rowIndex) {
-    const label = claimStatsString_(rowValues[0]).trim();
-    if (label === CLAIM_STATS_CONFIG.sectionLabels.newClaims) {
-      newClaimRows.push(rowIndex + 1);
+    const newClaimsLabel = matchClaimStatsBannerLabel_(rowValues, CLAIM_STATS_CONFIG.bannerPrefixes.newClaims);
+    if (newClaimsLabel) {
+      banners.push({ type: 'newClaims', row: rowIndex + 1, label: newClaimsLabel });
+      return;
     }
 
-    if (label === CLAIM_STATS_CONFIG.sectionLabels.liabilityConfirmed) {
-      liabilityConfirmedRows.push(rowIndex + 1);
+    const liabilityLabel = matchClaimStatsBannerLabel_(rowValues, CLAIM_STATS_CONFIG.bannerPrefixes.liabilityConfirmed);
+    if (liabilityLabel) {
+      banners.push({ type: 'liabilityConfirmed', row: rowIndex + 1, label: liabilityLabel });
     }
   });
 
-  validateClaimStatsSectionRows_(newClaimRows, CLAIM_STATS_CONFIG.sectionLabels.newClaims);
-  validateClaimStatsSectionRows_(liabilityConfirmedRows, CLAIM_STATS_CONFIG.sectionLabels.liabilityConfirmed);
+  const newClaimBanners = banners.filter(function(banner) {
+    return banner.type === 'newClaims';
+  });
+  const liabilityBanners = banners.filter(function(banner) {
+    return banner.type === 'liabilityConfirmed';
+  });
 
-  if (newClaimRows[0] >= liabilityConfirmedRows[0]) {
+  if (!newClaimBanners.length) {
     throw new Error(
-      '"' + CLAIM_STATS_CONFIG.sectionLabels.newClaims + '" must appear before "' +
-      CLAIM_STATS_CONFIG.sectionLabels.liabilityConfirmed + '" in column A.'
+      'No "NEW CLAIMS" section banner was found in the "' + CLAIM_STATS_CONFIG.sourceSheetName +
+      '" sheet (expected a row such as "NEW CLAIMS VIA MANUAL INPUT").'
     );
   }
 
+  if (liabilityBanners.length !== 1) {
+    throw new Error(
+      'Expected exactly one "LIABILITY CONFIRMED" banner in the "' + CLAIM_STATS_CONFIG.sourceSheetName +
+      '" sheet, but found ' + liabilityBanners.length + '.'
+    );
+  }
+
+  const liabilityBanner = liabilityBanners[0];
+  const misordered = newClaimBanners.some(function(banner) {
+    return banner.row >= liabilityBanner.row;
+  });
+
+  if (misordered) {
+    throw new Error(
+      'All "NEW CLAIMS" banners must appear before "LIABILITY CONFIRMED" in the "' +
+      CLAIM_STATS_CONFIG.sourceSheetName + '" sheet.'
+    );
+  }
+
+  const orderedBanners = banners.slice().sort(function(left, right) {
+    return left.row - right.row;
+  });
+
+  function buildSection(banner) {
+    const nextBanner = orderedBanners.find(function(candidate) {
+      return candidate.row > banner.row;
+    });
+
+    return {
+      label: banner.label,
+      startRow: banner.row + 1,
+      endRow: nextBanner ? nextBanner.row - 1 : values.length
+    };
+  }
+
   return {
-    newClaims: {
-      label: CLAIM_STATS_CONFIG.sectionLabels.newClaims,
-      startRow: newClaimRows[0] + 1,
-      endRow: liabilityConfirmedRows[0] - 1
-    },
-    liabilityConfirmed: {
-      label: CLAIM_STATS_CONFIG.sectionLabels.liabilityConfirmed,
-      startRow: liabilityConfirmedRows[0] + 1,
-      endRow: values.length
-    }
+    newClaims: newClaimBanners.map(buildSection),
+    liabilityConfirmed: buildSection(liabilityBanner)
   };
 }
 
-function validateClaimStatsSectionRows_(sectionRows, label) {
-  if (!sectionRows.length) {
-    throw new Error('Section label "' + label + '" was not found exactly in column A.');
+/**
+ * Returns the displayed text of the first banner cell (within the first few
+ * columns) whose normalized value starts with one of the given prefixes, or ''
+ * if the row is not a banner. Scanning a few columns rather than only column A
+ * tolerates banners whose merged cell is anchored slightly differently.
+ */
+function matchClaimStatsBannerLabel_(rowValues, prefixes) {
+  const cells = rowValues || [];
+  const scanLimit = Math.min(cells.length, CLAIM_STATS_CONFIG.bannerScanColumns);
+
+  for (let index = 0; index < scanLimit; index++) {
+    const normalized = normalizeClaimStatsLabel_(cells[index]);
+    if (!normalized) {
+      continue;
+    }
+
+    for (let prefixIndex = 0; prefixIndex < prefixes.length; prefixIndex++) {
+      if (normalized.indexOf(normalizeClaimStatsLabel_(prefixes[prefixIndex])) === 0) {
+        return claimStatsString_(cells[index]).trim();
+      }
+    }
   }
 
-  if (sectionRows.length > 1) {
-    throw new Error('Section label "' + label + '" appears more than once in column A.');
-  }
+  return '';
+}
+
+function normalizeClaimStatsLabel_(value) {
+  return claimStatsString_(value)
+    .replace(/\u00a0/g, ' ')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, ' ');
 }
 
 function extractClaimStatsRows_(values, sheetName, section, headerIndexes) {
