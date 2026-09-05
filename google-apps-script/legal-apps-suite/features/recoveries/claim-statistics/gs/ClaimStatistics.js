@@ -4,12 +4,18 @@ const CLAIM_STATS_CONFIG = {
   droppedCasesSheetName: 'Dropped Cases',
   droppedCasesSection: 'DROPPED CASES',
   timezone: 'Australia/Sydney',
-  sectionLabels: {
-    newClaims: 'NEW CLAIMS',
-    liabilityConfirmed: 'LIABILITY CONFIRMED'
+  // A section banner is matched when a cell within the first few columns of a
+  // row starts with one of these prefixes (compared case-insensitively, after
+  // collapsing whitespace and non-breaking spaces). New claims may be split
+  // across multiple banners (e.g. "NEW CLAIMS VIA MANUAL INPUT" and
+  // "NEW CLAIMS VIA DIGITAL CLAIM FORM"); records under any of them are counted
+  // as new claims.
+  bannerPrefixes: {
+    newClaims: ['NEW CLAIM'],
+    liabilityConfirmed: ['LIABILITY CONFIRMED']
   },
+  bannerScanColumns: 3,
   headers: {
-    claimNumber: 'CLAIM NUMBER',
     rego: 'REGO',
     clientName: 'CLIENT NAME',
     insurer: 'INSURER'
@@ -22,7 +28,6 @@ const CLAIM_STATS_CONFIG = {
     'WEEK KEY SYDNEY',
     'MONTH KEY SYDNEY',
     'CLAIM KEY',
-    'CLAIM NUMBER',
     'REGO',
     'CLIENT NAME',
     'INSURER',
@@ -42,6 +47,7 @@ const CLAIM_STATS_CONFIG = {
 
 function showClaimStatsDiagnostics() {
   try {
+    ensureClaimStatsAutoRefresh_();
     const result = refreshClaimStatsLog_();
     const diagnostics = buildClaimStatsDiagnosticsReport_(result.loggedAt);
     const template = HtmlService.createTemplateFromFile('ClaimStatsDiagnosticsModal');
@@ -60,6 +66,7 @@ function showClaimStatsDiagnostics() {
 
 function showClaimStatsModal() {
   try {
+    ensureClaimStatsAutoRefresh_();
     const report = getClaimStatsReport('custom', '', '');
     const template = HtmlService.createTemplateFromFile('ClaimStatsModal');
     template.report = report;
@@ -78,6 +85,117 @@ function showClaimStatsModal() {
 function getClaimStatsReport(preset, fromDateKey, toDateKey) {
   const result = refreshClaimStatsLog_();
   return buildClaimStatsReport_(preset || 'custom', result.loggedAt, fromDateKey || '', toDateKey || '');
+}
+
+const CLAIM_STATS_REFRESH_HANDLER = 'runClaimStatsAutoRefresh';
+const CLAIM_STATS_REFRESH_INTERVAL_MINUTES = 30;
+const CLAIM_STATS_REFRESH_STARTED_AT_KEY = 'CLAIM_STATS_AUTO_REFRESH_STARTED_AT';
+
+/**
+ * Installs the time-based auto-refresh trigger (every 30 minutes) if one is not
+ * already present, and records when it started. Called automatically when the
+ * modal/diagnostics open, so the trigger self-installs on first use with no
+ * manual step. Best-effort: any failure (e.g. scope not yet authorized) is
+ * logged and ignored so it never blocks opening the modal.
+ */
+function ensureClaimStatsAutoRefresh_() {
+  try {
+    if (hasClaimStatsAutoRefreshTrigger_()) {
+      return;
+    }
+
+    ScriptApp.newTrigger(CLAIM_STATS_REFRESH_HANDLER)
+      .timeBased()
+      .everyMinutes(CLAIM_STATS_REFRESH_INTERVAL_MINUTES)
+      .create();
+
+    // The trigger was just (re)created, so stamp the start time. This only runs
+    // when no trigger existed, so an already-running timer is never reset.
+    PropertiesService.getScriptProperties()
+      .setProperty(CLAIM_STATS_REFRESH_STARTED_AT_KEY, String(Date.now()));
+  } catch (error) {
+    Logger.log('Could not ensure claim stats auto-refresh trigger: %s', error && error.message ? error.message : error);
+  }
+}
+
+function hasClaimStatsAutoRefreshTrigger_() {
+  return ScriptApp.getProjectTriggers().some(function(trigger) {
+    return trigger.getHandlerFunction() === CLAIM_STATS_REFRESH_HANDLER;
+  });
+}
+
+/**
+ * Returns the auto-refresh trigger status for display in the modal: whether it
+ * is active, when it started, and a human-readable "running for" duration.
+ * Best-effort: if triggers cannot be read, returns an inactive status rather
+ * than throwing so the report still renders.
+ */
+function getClaimStatsAutoRefreshStatus_() {
+  const status = {
+    active: false,
+    intervalMinutes: CLAIM_STATS_REFRESH_INTERVAL_MINUTES,
+    startedAtDisplay: '',
+    runningForText: ''
+  };
+
+  let active = false;
+  try {
+    active = hasClaimStatsAutoRefreshTrigger_();
+  } catch (error) {
+    Logger.log('Could not read project triggers for status: %s', error && error.message ? error.message : error);
+    return status;
+  }
+
+  status.active = active;
+  if (!active) {
+    return status;
+  }
+
+  const startedAtRaw = PropertiesService.getScriptProperties().getProperty(CLAIM_STATS_REFRESH_STARTED_AT_KEY);
+  const startedAtMs = Number(startedAtRaw);
+  if (startedAtRaw && !isNaN(startedAtMs)) {
+    status.startedAtDisplay = Utilities.formatDate(new Date(startedAtMs), CLAIM_STATS_CONFIG.timezone, 'yyyy-MM-dd HH:mm');
+    status.runningForText = formatClaimStatsDuration_(Date.now() - startedAtMs);
+  }
+
+  return status;
+}
+
+function formatClaimStatsDuration_(milliseconds) {
+  if (!milliseconds || milliseconds < 0) {
+    return 'less than a minute';
+  }
+
+  const totalMinutes = Math.floor(milliseconds / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  const parts = [];
+
+  if (days) {
+    parts.push(days + (days === 1 ? ' day' : ' days'));
+  }
+  if (hours) {
+    parts.push(hours + (hours === 1 ? ' hour' : ' hours'));
+  }
+  if (minutes || !parts.length) {
+    parts.push(minutes + (minutes === 1 ? ' minute' : ' minutes'));
+  }
+
+  return parts.join(' ');
+}
+
+/**
+ * Time-based trigger handler. Runs the same scan as opening the modal, appending
+ * any newly observed claim events to the log. Errors are logged rather than
+ * thrown so a transient failure does not generate owner failure notifications.
+ */
+function runClaimStatsAutoRefresh() {
+  try {
+    refreshClaimStatsLog_();
+  } catch (error) {
+    Logger.log('Claim stats auto-refresh failed: %s', error && error.stack ? error.stack : error);
+  }
 }
 
 function refreshClaimStatsLog_() {
@@ -174,10 +292,26 @@ function scanClaimStatsSections_(spreadsheet) {
   const sections = findClaimStatsSections_(values);
 
   return {
-    newClaims: extractClaimStatsRows_(values, sheet.getName(), sections.newClaims, headerIndexes),
+    newClaims: extractClaimStatsRowsFromSections_(values, sheet.getName(), sections.newClaims, headerIndexes),
     liabilityConfirmed: extractClaimStatsRows_(values, sheet.getName(), sections.liabilityConfirmed, headerIndexes),
     droppedCases: scanClaimStatsDroppedRows_(spreadsheet, headerIndexes)
   };
+}
+
+function extractClaimStatsRowsFromSections_(values, sheetName, sections, headerIndexes) {
+  const rowsByClaimKey = {};
+
+  (sections || []).forEach(function(section) {
+    extractClaimStatsRows_(values, sheetName, section, headerIndexes).forEach(function(claim) {
+      if (!rowsByClaimKey[claim.claimKey]) {
+        rowsByClaimKey[claim.claimKey] = claim;
+      }
+    });
+  });
+
+  return Object.keys(rowsByClaimKey).sort().map(function(claimKey) {
+    return rowsByClaimKey[claimKey];
+  });
 }
 
 function scanClaimStatsDroppedRows_(spreadsheet, headerIndexes) {
@@ -214,7 +348,6 @@ function getClaimStatsHeaderIndexes_(headerRow) {
   });
 
   return {
-    claimNumber: getClaimStatsHeaderIndex_(normalizedHeaders, CLAIM_STATS_CONFIG.headers.claimNumber),
     rego: getClaimStatsHeaderIndex_(normalizedHeaders, CLAIM_STATS_CONFIG.headers.rego),
     clientName: getClaimStatsHeaderIndex_(normalizedHeaders, CLAIM_STATS_CONFIG.headers.clientName),
     insurer: getClaimStatsHeaderIndex_(normalizedHeaders, CLAIM_STATS_CONFIG.headers.insurer)
@@ -231,52 +364,108 @@ function getClaimStatsHeaderIndex_(normalizedHeaders, headerName) {
 }
 
 function findClaimStatsSections_(values) {
-  const newClaimRows = [];
-  const liabilityConfirmedRows = [];
+  const banners = [];
 
   values.forEach(function(rowValues, rowIndex) {
-    const label = claimStatsString_(rowValues[0]).trim();
-    if (label === CLAIM_STATS_CONFIG.sectionLabels.newClaims) {
-      newClaimRows.push(rowIndex + 1);
+    const newClaimsLabel = matchClaimStatsBannerLabel_(rowValues, CLAIM_STATS_CONFIG.bannerPrefixes.newClaims);
+    if (newClaimsLabel) {
+      banners.push({ type: 'newClaims', row: rowIndex + 1, label: newClaimsLabel });
+      return;
     }
 
-    if (label === CLAIM_STATS_CONFIG.sectionLabels.liabilityConfirmed) {
-      liabilityConfirmedRows.push(rowIndex + 1);
+    const liabilityLabel = matchClaimStatsBannerLabel_(rowValues, CLAIM_STATS_CONFIG.bannerPrefixes.liabilityConfirmed);
+    if (liabilityLabel) {
+      banners.push({ type: 'liabilityConfirmed', row: rowIndex + 1, label: liabilityLabel });
     }
   });
 
-  validateClaimStatsSectionRows_(newClaimRows, CLAIM_STATS_CONFIG.sectionLabels.newClaims);
-  validateClaimStatsSectionRows_(liabilityConfirmedRows, CLAIM_STATS_CONFIG.sectionLabels.liabilityConfirmed);
+  const newClaimBanners = banners.filter(function(banner) {
+    return banner.type === 'newClaims';
+  });
+  const liabilityBanners = banners.filter(function(banner) {
+    return banner.type === 'liabilityConfirmed';
+  });
 
-  if (newClaimRows[0] >= liabilityConfirmedRows[0]) {
+  if (!newClaimBanners.length) {
     throw new Error(
-      '"' + CLAIM_STATS_CONFIG.sectionLabels.newClaims + '" must appear before "' +
-      CLAIM_STATS_CONFIG.sectionLabels.liabilityConfirmed + '" in column A.'
+      'No "NEW CLAIMS" section banner was found in the "' + CLAIM_STATS_CONFIG.sourceSheetName +
+      '" sheet (expected a row such as "NEW CLAIMS VIA MANUAL INPUT").'
     );
   }
 
+  if (liabilityBanners.length !== 1) {
+    throw new Error(
+      'Expected exactly one "LIABILITY CONFIRMED" banner in the "' + CLAIM_STATS_CONFIG.sourceSheetName +
+      '" sheet, but found ' + liabilityBanners.length + '.'
+    );
+  }
+
+  const liabilityBanner = liabilityBanners[0];
+  const misordered = newClaimBanners.some(function(banner) {
+    return banner.row >= liabilityBanner.row;
+  });
+
+  if (misordered) {
+    throw new Error(
+      'All "NEW CLAIMS" banners must appear before "LIABILITY CONFIRMED" in the "' +
+      CLAIM_STATS_CONFIG.sourceSheetName + '" sheet.'
+    );
+  }
+
+  const orderedBanners = banners.slice().sort(function(left, right) {
+    return left.row - right.row;
+  });
+
+  function buildSection(banner) {
+    const nextBanner = orderedBanners.find(function(candidate) {
+      return candidate.row > banner.row;
+    });
+
+    return {
+      label: banner.label,
+      startRow: banner.row + 1,
+      endRow: nextBanner ? nextBanner.row - 1 : values.length
+    };
+  }
+
   return {
-    newClaims: {
-      label: CLAIM_STATS_CONFIG.sectionLabels.newClaims,
-      startRow: newClaimRows[0] + 1,
-      endRow: liabilityConfirmedRows[0] - 1
-    },
-    liabilityConfirmed: {
-      label: CLAIM_STATS_CONFIG.sectionLabels.liabilityConfirmed,
-      startRow: liabilityConfirmedRows[0] + 1,
-      endRow: values.length
-    }
+    newClaims: newClaimBanners.map(buildSection),
+    liabilityConfirmed: buildSection(liabilityBanner)
   };
 }
 
-function validateClaimStatsSectionRows_(sectionRows, label) {
-  if (!sectionRows.length) {
-    throw new Error('Section label "' + label + '" was not found exactly in column A.');
+/**
+ * Returns the displayed text of the first banner cell (within the first few
+ * columns) whose normalized value starts with one of the given prefixes, or ''
+ * if the row is not a banner. Scanning a few columns rather than only column A
+ * tolerates banners whose merged cell is anchored slightly differently.
+ */
+function matchClaimStatsBannerLabel_(rowValues, prefixes) {
+  const cells = rowValues || [];
+  const scanLimit = Math.min(cells.length, CLAIM_STATS_CONFIG.bannerScanColumns);
+
+  for (let index = 0; index < scanLimit; index++) {
+    const normalized = normalizeClaimStatsLabel_(cells[index]);
+    if (!normalized) {
+      continue;
+    }
+
+    for (let prefixIndex = 0; prefixIndex < prefixes.length; prefixIndex++) {
+      if (normalized.indexOf(normalizeClaimStatsLabel_(prefixes[prefixIndex])) === 0) {
+        return claimStatsString_(cells[index]).trim();
+      }
+    }
   }
 
-  if (sectionRows.length > 1) {
-    throw new Error('Section label "' + label + '" appears more than once in column A.');
-  }
+  return '';
+}
+
+function normalizeClaimStatsLabel_(value) {
+  return claimStatsString_(value)
+    .replace(/\u00a0/g, ' ')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, ' ');
 }
 
 function extractClaimStatsRows_(values, sheetName, section, headerIndexes) {
@@ -288,9 +477,8 @@ function extractClaimStatsRows_(values, sheetName, section, headerIndexes) {
       continue;
     }
 
-    const claimNumber = claimStatsString_(rowValues[headerIndexes.claimNumber]).trim();
     const rego = claimStatsString_(rowValues[headerIndexes.rego]).trim();
-    const claimKey = buildClaimStatsKey_(claimNumber, rego);
+    const claimKey = buildClaimStatsKey_(rego);
 
     if (!claimKey) {
       continue;
@@ -299,7 +487,6 @@ function extractClaimStatsRows_(values, sheetName, section, headerIndexes) {
     if (!rowsByClaimKey[claimKey]) {
       rowsByClaimKey[claimKey] = {
         claimKey: claimKey,
-        claimNumber: claimNumber,
         rego: rego,
         clientName: claimStatsString_(rowValues[headerIndexes.clientName]).trim(),
         insurer: claimStatsString_(rowValues[headerIndexes.insurer]).trim(),
@@ -321,15 +508,14 @@ function isClaimStatsBlankRow_(rowValues) {
   });
 }
 
-function buildClaimStatsKey_(claimNumber, rego) {
-  const normalizedClaimNumber = normalizeClaimStatsKeyPart_(claimNumber);
+function buildClaimStatsKey_(rego) {
   const normalizedRego = normalizeClaimStatsKeyPart_(rego);
 
-  if (!normalizedClaimNumber || !normalizedRego) {
+  if (!normalizedRego) {
     return '';
   }
 
-  return normalizedClaimNumber + '|' + normalizedRego;
+  return normalizedRego;
 }
 
 function normalizeClaimStatsKeyPart_(value) {
@@ -418,7 +604,6 @@ function appendClaimStatsBaselineRows_(logSheet, snapshot, dateKeys) {
   if (!rows.length) {
     rows.push(buildClaimStatsLogRow_(CLAIM_STATS_CONFIG.eventTypes.baselineNewClaim, {
       claimKey: '__BASELINE__',
-      claimNumber: '',
       rego: '',
       clientName: 'Baseline initialized with no claim rows',
       insurer: '',
@@ -460,7 +645,6 @@ function appendClaimStatsDroppedBaselineRows_(logSheet, snapshot, dateKeys) {
   if (!rows.length) {
     rows.push(buildClaimStatsLogRow_(CLAIM_STATS_CONFIG.eventTypes.baselineDroppedCase, {
       claimKey: '__BASELINE__',
-      claimNumber: '',
       rego: '',
       clientName: 'Baseline initialized with no dropped case rows',
       insurer: '',
@@ -512,7 +696,6 @@ function buildClaimStatsLogRow_(eventType, claim, dateKeys) {
     dateKeys.weekKey,
     dateKeys.monthKey,
     claim.claimKey,
-    claim.claimNumber,
     claim.rego,
     claim.clientName,
     claim.insurer,
@@ -551,6 +734,7 @@ function buildClaimStatsReport_(preset, now, fromDateKey, toDateKey) {
       ? 'All non-baseline events'
       : 'DATE KEY SYDNEY between ' + rangeConfig.fromDateKey + ' and ' + rangeConfig.toDateKey,
     lastScanned: dateKeys.loggedAtDisplay,
+    autoRefresh: getClaimStatsAutoRefreshStatus_(),
     totals: {
       newClaims: newClaims.length,
       liabilityConfirmed: liabilityConfirmed.length,
@@ -781,7 +965,6 @@ function groupClaimStatsReportRows_(rows) {
 function buildClaimStatsReportClaim_(rowValues) {
   return {
     claimKey: claimStatsString_(rowValues[getClaimStatsLogColumnIndex_('CLAIM KEY')]),
-    claimNumber: claimStatsString_(rowValues[getClaimStatsLogColumnIndex_('CLAIM NUMBER')]),
     rego: claimStatsString_(rowValues[getClaimStatsLogColumnIndex_('REGO')]),
     clientName: claimStatsString_(rowValues[getClaimStatsLogColumnIndex_('CLIENT NAME')]),
     insurer: claimStatsString_(rowValues[getClaimStatsLogColumnIndex_('INSURER')]),

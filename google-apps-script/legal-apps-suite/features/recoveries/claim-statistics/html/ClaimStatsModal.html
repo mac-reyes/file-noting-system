@@ -388,6 +388,7 @@
           '<span class="badge">' + escapeHtml(data.badge || 'Claim Statistics') + '</span>',
           '<h1 class="hero-title">' + escapeHtml(data.title || 'Claim Statistics') + '</h1>',
           '<p class="hero-subtitle">' + escapeHtml(data.subtitle || '') + '</p>',
+          '<p class="hero-subtitle" style="opacity:0.85;font-size:12px;">' + escapeHtml(autoRefreshSummary(data.autoRefresh)) + '</p>',
           '<div class="metric-grid">',
             metricCard('New Claims Added', totals.newClaims, 'logged', ''),
             metricCard('Liability Confirmed', totals.liabilityConfirmed, 'moved', 'metric-card-accent'),
@@ -457,6 +458,8 @@
               detailRow('Range', data.rangeLabel || 'Not provided'),
               detailRow('Filter', data.filterLabel || 'Not provided'),
               detailRow('Last scanned', data.lastScanned || 'Not provided'),
+              detailRow('Auto-refresh', autoRefreshSummary(data.autoRefresh)),
+              detailRow('Auto-refresh since', autoRefreshSince(data.autoRefresh)),
             '</div>',
           '</section>'
         ].join('');
@@ -466,6 +469,24 @@
 
     function detailRow(label, value) {
       return '<div class="detail-row"><div>' + escapeHtml(label) + '</div><div class="detail-value">' + escapeHtml(value || '-') + '</div></div>';
+    }
+
+    function autoRefreshSummary(status) {
+      if (!status || !status.active) {
+        return 'Not active yet — reopen after authorizing';
+      }
+      const every = status.intervalMinutes ? ' (every ' + status.intervalMinutes + ' min)' : '';
+      if (status.runningForText) {
+        return 'On' + every + ' — running for ' + status.runningForText;
+      }
+      return 'On' + every;
+    }
+
+    function autoRefreshSince(status) {
+      if (!status || !status.active) {
+        return 'Not running';
+      }
+      return status.startedAtDisplay || 'Start time unknown';
     }
 
     function getSection(sectionId) {
@@ -478,7 +499,7 @@
         return '<p class="section-copy">No claims were logged for this section.</p>';
       }
       return '<div class="claim-list">' + claims.map(function(claim) {
-        const title = [claim.claimNumber, claim.rego].filter(Boolean).join(' / ') || claim.claimKey || 'Claim';
+        const title = claim.rego || claim.claimKey || 'Claim';
         const meta = [claim.clientName, claim.insurer].filter(Boolean).join(' - ') || 'No client or insurer recorded';
         return [
           '<article class="claim-card">',
