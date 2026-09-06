@@ -18,6 +18,8 @@ This project models the combined legal Apps Script workspace as feature modules 
   - Settlement count analytics source under `gs/` and bundled modal HTML under `html/`
 - `features/money-talks/settlement-release-generator/`
   - Money Talks settlement release generator source under `gs/`
+- `features/money-talks/invoice-generator/`
+  - Money Talks invoice generator source under `gs/`
 - `features/money-talks/counter-buttons/`
   - Money Talks assigned-button counter helpers under `gs/Code.js`, which builds to `Code.gs`
 - `appsscript.json`

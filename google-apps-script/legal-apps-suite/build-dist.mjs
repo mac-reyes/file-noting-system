@@ -16,7 +16,8 @@ const copiedDistFiles = new Map();
 const CONFIG_KEY_TO_FEATURE = {
   RECOVERY_DOCUMENT_TEMPLATES: 'recoveries/recovery-document-generator',
   REPAIRER_MAP: 'recoveries/repairer-sync',
-  MONEY_TALKS_SETTLEMENT_RELEASE_TEMPLATE_ID: 'money-talks/settlement-release-generator'
+  MONEY_TALKS_SETTLEMENT_RELEASE_TEMPLATE_ID: 'money-talks/settlement-release-generator',
+  MONEY_TALKS_INVOICE_TEMPLATES: 'money-talks/invoice-generator'
 };
 
 function parseSelectedFeatures(argv) {

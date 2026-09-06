@@ -1,5 +1,5 @@
 {
-  "_comment": "Copy this file to config.ids.local.json (gitignored) and fill in real Google Drive IDs. The build embeds these into dist/Setup.gs (feature-scoped). Run setupLegalAppsSuiteScriptProperties() once per Apps Script project to populate Script Properties. Owning features: RECOVERY_DOCUMENT_TEMPLATES -> recoveries/recovery-document-generator, REPAIRER_MAP -> recoveries/repairer-sync, MONEY_TALKS_SETTLEMENT_RELEASE_TEMPLATE_ID -> money-talks/settlement-release-generator.",
+  "_comment": "Copy this file to config.ids.local.json (gitignored) and fill in real Google Drive IDs. The build embeds these into dist/Setup.gs (feature-scoped). Run setupLegalAppsSuiteScriptProperties() once per Apps Script project to populate Script Properties. Owning features: RECOVERY_DOCUMENT_TEMPLATES -> recoveries/recovery-document-generator, REPAIRER_MAP -> recoveries/repairer-sync, MONEY_TALKS_SETTLEMENT_RELEASE_TEMPLATE_ID -> money-talks/settlement-release-generator, MONEY_TALKS_INVOICE_TEMPLATES -> money-talks/invoice-generator.",
   "RECOVERY_DOCUMENT_TEMPLATES": {
     "NOTICE_TO_SUE": "REPLACE_WITH_DRIVE_ID",
     "LETTER_OF_INSTRUCTIONS": "REPLACE_WITH_DRIVE_ID",
@@ -17,5 +17,9 @@
   "REPAIRER_MAP": {
     "Example Repairer Name": "REPLACE_WITH_SPREADSHEET_ID"
   },
-  "MONEY_TALKS_SETTLEMENT_RELEASE_TEMPLATE_ID": "REPLACE_WITH_DRIVE_ID"
+  "MONEY_TALKS_SETTLEMENT_RELEASE_TEMPLATE_ID": "REPLACE_WITH_DRIVE_ID",
+  "MONEY_TALKS_INVOICE_TEMPLATES": {
+    "EPP": "REPLACE_WITH_DRIVE_ID",
+    "ISP": "REPLACE_WITH_DRIVE_ID"
+  }
 }
