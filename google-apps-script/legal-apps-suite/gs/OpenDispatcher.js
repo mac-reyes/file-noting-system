@@ -60,6 +60,11 @@ function onOpen_DocumentGenerator() {
     hasItems = true;
   }
 
+  if (typeof generateMoneyTalksInvoice === 'function') {
+    subMenu.addItem('Invoice (Money Talks)', 'generateMoneyTalksInvoice');
+    hasItems = true;
+  }
+
   if (hasItems) {
     menu.addSubMenu(subMenu).addToUi();
   }

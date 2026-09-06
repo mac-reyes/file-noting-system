@@ -48,3 +48,7 @@ function getRepairerMap_() {
 function getMoneyTalksSettlementReleaseTemplateId_() {
   return getScriptProperty_('MONEY_TALKS_SETTLEMENT_RELEASE_TEMPLATE_ID');
 }
+
+function getMoneyTalksInvoiceTemplates_() {
+  return getJsonScriptProperty_('MONEY_TALKS_INVOICE_TEMPLATES');
+}
