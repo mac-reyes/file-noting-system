@@ -3,12 +3,18 @@
  */
 
 // Template IDs come from Script Properties (see ConfigProperties.js /
-// getMoneyTalksInvoiceTemplates_), keyed by Payee/Entity value.
+// getMoneyTalksInvoiceTemplates_), keyed by template name (EPP /
+// EPP_PAYABLE_TO_ISP / ISP).
+//
+// Template is chosen by which menu item the user clicks (see OpenDispatcher.js
+// and generateMoneyTalksInvoiceEpp/EppPayableToIsp/Isp below), not by the
+// "ISP OR EPP" column on the sheet - the client asked to move template
+// selection to the menu instead of relying on that dropdown (that column
+// stays on the sheet for their own tracking, it's just no longer read here).
 
 // Column layout matches the live INVOICING tab exactly (confirmed with the
 // user), not the letters originally guessed from the template placeholders.
 const MONEY_TALKS_INVOICE_COLUMNS = {
-  column_payee: 'A', // ISP OR EPP - selects which template to copy
   column_b: 'B', // INV #
   column_c: 'C', // Reference
   column_d: 'D', // Bill to - name
@@ -23,7 +29,19 @@ const MONEY_TALKS_INVOICE_COLUMNS = {
   column_m: 'M' // Amount due
 };
 
-function generateMoneyTalksInvoice() {
+function generateMoneyTalksInvoiceEpp() {
+  generateMoneyTalksInvoice_('EPP');
+}
+
+function generateMoneyTalksInvoiceEppPayableToIsp() {
+  generateMoneyTalksInvoice_('EPP_PAYABLE_TO_ISP');
+}
+
+function generateMoneyTalksInvoiceIsp() {
+  generateMoneyTalksInvoice_('ISP');
+}
+
+function generateMoneyTalksInvoice_(templateKey) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = moneyTalksInvoiceGetSheetByName_(spreadsheet, 'INVOICING');
   const activeSheet = spreadsheet.getActiveSheet();
@@ -43,8 +61,7 @@ function generateMoneyTalksInvoice() {
   const rowData = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
   const columns = MONEY_TALKS_INVOICE_COLUMNS;
 
-  const payeeKey = rowData[moneyTalksInvoiceColumnLetterToIndex_(columns.column_payee)];
-  const templateId = moneyTalksInvoiceGetTemplateId_(payeeKey);
+  const templateId = moneyTalksInvoiceGetTemplateId_(templateKey);
 
   const invoiceNumber = rowData[moneyTalksInvoiceColumnLetterToIndex_(columns.column_b)];
   const clientName = rowData[moneyTalksInvoiceColumnLetterToIndex_(columns.column_d)];
@@ -108,11 +125,11 @@ function moneyTalksInvoiceGetSheetByName_(spreadsheet, sheetName) {
   return sheet;
 }
 
-function moneyTalksInvoiceGetTemplateId_(payeeKey) {
+function moneyTalksInvoiceGetTemplateId_(templateKey) {
   const templates = getMoneyTalksInvoiceTemplates_();
-  const templateId = templates[payeeKey];
+  const templateId = templates[templateKey];
   if (!templateId) {
-    throw new Error('No invoice template configured for Payee/Entity "' + payeeKey + '".');
+    throw new Error('No invoice template configured for "' + templateKey + '".');
   }
 
   return templateId;
