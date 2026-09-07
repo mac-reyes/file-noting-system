@@ -56,12 +56,22 @@ function onOpen_DocumentGenerator() {
   }
 
   if (typeof generateMoneyTalksSettlementRelease === 'function') {
-    subMenu.addItem('Settlement Release (Money Talks)', 'generateMoneyTalksSettlementRelease');
+    subMenu.addItem('Settlement Release', 'generateMoneyTalksSettlementRelease');
     hasItems = true;
   }
 
-  if (typeof generateMoneyTalksInvoice === 'function') {
-    subMenu.addItem('Invoice (Money Talks)', 'generateMoneyTalksInvoice');
+  if (typeof generateMoneyTalksInvoiceEpp === 'function') {
+    subMenu.addItem('Invoice - EPP', 'generateMoneyTalksInvoiceEpp');
+    hasItems = true;
+  }
+
+  if (typeof generateMoneyTalksInvoiceEppPayableToIsp === 'function') {
+    subMenu.addItem('Invoice - EPP payable to ISP', 'generateMoneyTalksInvoiceEppPayableToIsp');
+    hasItems = true;
+  }
+
+  if (typeof generateMoneyTalksInvoiceIsp === 'function') {
+    subMenu.addItem('Invoice - ISP', 'generateMoneyTalksInvoiceIsp');
     hasItems = true;
   }
 
